@@ -10,6 +10,10 @@ import { Avatar } from "@/components/ui/avatar";
 import { StatusDot, Tone } from "@/components/ui/pills";
 import { EditPanel } from "./edit-panel";
 import { SoftwareTable } from "./software-table";
+import { addRelationship, removeRelationship } from "@/app/extra-actions";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/input";
+import { X } from "lucide-react";
 
 const TABS = ["overview", "relationships", "software", "components", "associations", "purchase-orders", "contracts", "expenses", "assignment", "activity"] as const;
 type Tab = (typeof TABS)[number];
@@ -28,9 +32,9 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
   const tab: Tab = (TABS as readonly string[]).includes(rawTab ?? "") ? (rawTab as Tab) : "overview";
   const [data, pickers] = await Promise.all([getAssetFull(Number(id)), listPickers()]);
   if (!data) notFound();
-  const { a, owner, managedBy, managedByGroup, software, assignments, tickets, activity, contracts, pos, peers } = data;
+  const { a, owner, managedBy, managedByGroup, software, assignments, tickets, activity, contracts, pos, peers, relOut, relIn, allAssets } = data;
   const title = a.hostname ?? a.name;
-  const counts: Partial<Record<Tab, number>> = { software: software.length, components: 4, associations: tickets.length, contracts: contracts.length, "purchase-orders": pos.length, assignment: assignments.length, activity: activity.length, relationships: peers.length };
+  const counts: Partial<Record<Tab, number>> = { software: software.length, components: 4, associations: tickets.length, contracts: contracts.length, "purchase-orders": pos.length, assignment: assignments.length, activity: activity.length, relationships: relOut.length + relIn.length };
   const monthly = software.reduce((s, x) => s + Number(x.cost), 0);
 
   return (
@@ -89,21 +93,57 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
               {tab === "software" && <SoftwareTable assetId={a.id} rows={software} monthly={monthly} />}
 
               {tab === "relationships" && (
-                <div>
-                  <p className="mb-3 text-[13px] text-ink-3">Other assets used by the same person. Upstream/downstream relationship types arrive with the CMDB phase.</p>
-                  {peers.length === 0 ? <EmptyTab text="No related assets." /> : (
-                    <ul className="divide-y divide-line rounded-lg bg-surface hairline">
-                      {peers.map((p) => (
-                        <li key={p.id}>
-                          <Link href={`/assets/${p.id}`} className="row flex items-center gap-3 px-4 py-2.5 text-[13px]">
-                            {p.type === "mobile" ? <Smartphone className="size-4 text-ink-3" /> : <Laptop className="size-4 text-ink-3" />}
-                            <span className="font-medium text-accent-ink">{p.name}</span>
-                            <span className="text-ink-3">{p.model}</span>
-                            <span className="ml-auto font-mono text-[11px] text-ink-3">{p.assetTag}</span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
+                <div className="space-y-4">
+                  <div className="rounded-lg bg-surface hairline">
+                    <div className="px-4 py-2.5 text-[13px] font-semibold hairline-b">Relationships · {relOut.length + relIn.length}</div>
+                    {relOut.length + relIn.length === 0 ? <p className="px-4 py-6 text-[13px] text-ink-3">No relationships yet. Add one below — dependencies show on both assets.</p> : (
+                      <ul className="divide-y divide-line">
+                        {relOut.map(({ r, name, assetTag, type }) => (
+                          <li key={`o${r.id}`} className="flex items-center gap-3 px-4 py-2 text-[13px]">
+                            <span className="w-28 capitalize text-ink-3">{r.type.replace("_", " ")}</span>
+                            <Link href={`/assets/${r.toAssetId}`} className="font-medium text-accent-ink hover:underline">{name}</Link>
+                            <span className="font-mono text-[11px] text-ink-3">{assetTag}</span>
+                            <span className="text-[11.5px] capitalize text-ink-4">{type}</span>
+                            <form action={removeRelationship.bind(null, r.id, a.id)} className="ml-auto"><button type="submit" aria-label="Remove" className="rounded p-1 text-ink-3 hover:bg-surface-2 hover:text-ink"><X className="size-3.5" /></button></form>
+                          </li>
+                        ))}
+                        {relIn.map(({ r, name, assetTag, type }) => (
+                          <li key={`i${r.id}`} className="flex items-center gap-3 px-4 py-2 text-[13px]">
+                            <span className="w-28 text-ink-3">{r.type === "depends_on" ? "used by" : r.type === "connected_to" ? "connected to" : "upstream of"}</span>
+                            <Link href={`/assets/${r.fromAssetId}`} className="font-medium text-accent-ink hover:underline">{name}</Link>
+                            <span className="font-mono text-[11px] text-ink-3">{assetTag}</span>
+                            <span className="text-[11.5px] capitalize text-ink-4">{type}</span>
+                            <form action={removeRelationship.bind(null, r.id, a.id)} className="ml-auto"><button type="submit" aria-label="Remove" className="rounded p-1 text-ink-3 hover:bg-surface-2 hover:text-ink"><X className="size-3.5" /></button></form>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <form action={addRelationship.bind(null, a.id)} className="flex items-center gap-2 rounded-lg bg-surface p-3 hairline">
+                    <span className="text-[13px]">{title}</span>
+                    <Select name="type" defaultValue="depends_on" className="h-8 w-40 text-[12.5px]"><option value="depends_on">depends on</option><option value="connected_to">connected to</option><option value="used_by">used by</option></Select>
+                    <Select name="toAssetId" defaultValue="" className="h-8 flex-1 text-[12.5px]">
+                      <option value="">Choose an asset…</option>
+                      {allAssets.map((x) => <option key={x.id} value={x.id}>{x.name} · {x.assetTag}</option>)}
+                    </Select>
+                    <Button type="submit" size="sm" variant="secondary">Add</Button>
+                  </form>
+                  {peers.length > 0 && (
+                    <div className="rounded-lg bg-surface hairline">
+                      <div className="px-4 py-2.5 text-[13px] font-semibold hairline-b">Same person</div>
+                      <ul className="divide-y divide-line">
+                        {peers.map((p) => (
+                          <li key={p.id}>
+                            <Link href={`/assets/${p.id}`} className="row flex items-center gap-3 px-4 py-2 text-[13px]">
+                              {p.type === "mobile" ? <Smartphone className="size-4 text-ink-3" /> : <Laptop className="size-4 text-ink-3" />}
+                              <span className="font-medium text-accent-ink">{p.name}</span>
+                              <span className="text-ink-3">{p.model}</span>
+                              <span className="ml-auto font-mono text-[11px] text-ink-3">{p.assetTag}</span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
               )}

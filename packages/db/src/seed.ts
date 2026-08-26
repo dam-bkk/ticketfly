@@ -108,7 +108,7 @@ const NOTES = [
 ];
 
 async function truncate() {
-  await db.execute(sql`truncate table people, groups, group_members, categories, tickets, ticket_messages, activity_log, releases, assets, software, asset_software, services, onboardings, access_grants, sla_policies, system_jobs, saved_views, asset_assignments, problems, problem_incidents, changes, it_releases, tasks, alerts, it_services, projects, project_rows, notifications, user_prefs, workspaces, kb_folders, kb_articles, contracts, purchase_orders restart identity cascade`);
+  await db.execute(sql`truncate table people, groups, group_members, categories, tickets, ticket_messages, activity_log, releases, assets, software, asset_software, services, onboardings, access_grants, sla_policies, system_jobs, saved_views, asset_assignments, problems, problem_incidents, changes, it_releases, tasks, alerts, it_services, projects, project_rows, notifications, user_prefs, attachments, automation_rules, asset_relationships, custom_fields, workspace_members, workspaces, kb_folders, kb_articles, contracts, purchase_orders restart identity cascade`);
 }
 
 async function main() {
@@ -543,6 +543,7 @@ async function main() {
     { slug: "mobile", name: "Mobile & telephony", tagline: "SIM, roaming, phone replacement", icon: "smartphone", kind: "request", groupId: gid("Endpoint & Devices"), defaultPriority: "medium", eta: "1–2 working days", fields: [{ key: "need", label: "What do you need?", type: "select", required: true, options: ["Roaming activation", "New SIM", "Replacement phone", "Number transfer"] }, { key: "dates", label: "Travel dates (if roaming)", type: "text" }] },
     { slug: "security", name: "Report something suspicious", tagline: "Phishing, lost device, unusual activity", icon: "shield-alert", kind: "incident", groupId: gid("Service Desk"), defaultPriority: "urgent", eta: "Immediate triage, 24×7", fields: [{ key: "what", label: "What happened?", type: "textarea", required: true }, { key: "clicked", label: "Did you click a link or enter a password?", type: "toggle" }] },
     { slug: "guest-wifi", name: "Guest Wi-Fi", tagline: "Temporary network access for visitors", icon: "wifi", kind: "request", groupId: gid("Network & Infrastructure"), defaultPriority: "low", eta: "Within the hour", fields: [{ key: "names", label: "Visitor names", type: "textarea", required: true }, { key: "from", label: "From", type: "date", required: true }, { key: "to", label: "To", type: "date", required: true }] },
+    { slug: "project-request", name: "IT project work request", tagline: "Something bigger than a ticket — scoped, prioritised, tracked on the grid", icon: "kanban", kind: "request", groupId: gid("Service Desk"), defaultPriority: "medium", eta: "Reviewed at the weekly prioritisation", fields: [{ key: "title", label: "What do you want to achieve?", type: "text", required: true }, { key: "why", label: "Why does it matter, for whom?", type: "textarea", required: true }, { key: "when", label: "Needed by", type: "date" }, { key: "sponsor", label: "Sponsor", type: "person" }] },
     { slug: "other", name: "Something else", tagline: "Not sure where it fits? Start here.", icon: "message-circle", kind: "request", groupId: gid("Service Desk"), defaultPriority: "low", eta: "First reply within one business day", fields: [{ key: "what", label: "Tell us what you need", type: "textarea", required: true }] },
   ]);
 
@@ -753,7 +754,8 @@ async function main() {
     .values([
       { name: "Freshservice → Service Desk migration", description: "Cutover plan, data import, training, decommission.", status: "active", ownerId: byName("Nada Haddad").id, startDate: "2026-08-01", endDate: "2026-11-30" },
       { name: "HK office network refresh", description: "Core switches, Wi-Fi 6E, new SD-WAN.", status: "active", ownerId: byName("Daniel Lim").id, startDate: "2026-09-01", endDate: "2026-10-15" },
-      { name: "QVI ticket tracker (from Smartsheet)", description: "Pilot: QVI's request tracking on the grid, replacing their Smartsheet.", status: "planning", ownerId: byName("Damien Fleury").id, startDate: "2026-10-01", endDate: "2026-12-15", workspace: "qvi" },
+      { name: "QVI ticket tracker (from Smartsheet)", description: "Pilot: QVI's request tracking on the grid, replacing their Smartsheet.", status: "planning", ownerId: byName("Damien Fleury").id, startDate: "2026-10-01", endDate: "2026-12-15", workspace: "sip" },
+      { name: "IT project requests — prioritisation backlog", description: "Every IT project work request from the portal lands here for the weekly prioritisation.", status: "active", ownerId: byName("Nada Haddad").id, startDate: "2026-08-01", endDate: "2026-12-31", workspace: "pwr" },
     ])
     .returning({ id: schema.projects.id });
   const rows1: [string, string, string, string, string, number, number | null][] = [
@@ -805,6 +807,51 @@ async function main() {
     { personId: byName("Nada Haddad").id, kind: "approval", title: "Approval requested", body: "VPN gateway firmware upgrade — Saturday 22:00", href: `/changes/${changeRows[0]!.id}`, createdAt: hoursAgo(8) },
     { personId: byName("Ked Mardemootoo").id, kind: "approval", title: "Approval requested", body: "VPN gateway firmware upgrade — Saturday 22:00", href: `/changes/${changeRows[0]!.id}`, createdAt: hoursAgo(8) },
   ]);
+
+
+  // ---------- Workspaces: membership + a few non-IT tickets so isolation is visible ----------
+  const agentIds = agents.map((a) => a.id);
+  await db.insert(schema.workspaceMembers).values([
+    ...agentIds.map((personId) => ({ workspace: "it", personId, role: "agent" })),
+    { workspace: "finance", personId: byName("Nada Haddad").id, role: "admin" },
+    { workspace: "finance", personId: byName("Priya Sharma").id, role: "agent" },
+    { workspace: "pwr", personId: byName("Nada Haddad").id, role: "admin" },
+    { workspace: "pwr", personId: byName("Damien Fleury").id, role: "agent" },
+    { workspace: "globalops", personId: byName("Nada Haddad").id, role: "admin" },
+    { workspace: "sip", personId: byName("Nada Haddad").id, role: "admin" },
+  ]);
+  const financeReq = requesters.filter((r) => r.department === "Finance").slice(0, 3);
+  await db.insert(schema.tickets).values([
+    { kind: "request", subject: "Vendor invoice approval — Q3 audit fees", description: "Approve invoice INV-20983 against PO-2026-0398.", status: "open", priority: "medium", requesterId: financeReq[0]?.id ?? requesters[0]!.id, groupId: null, source: "portal", workspace: "finance", createdAt: hoursAgo(5), updatedAt: hoursAgo(5) },
+    { kind: "request", subject: "Expense claim query — travel to KL", description: "Claim EXP-4471 stuck in review.", status: "in_progress", priority: "low", requesterId: financeReq[1]?.id ?? requesters[1]!.id, assigneeId: byName("Priya Sharma").id, source: "email", workspace: "finance", createdAt: daysAgo(1), updatedAt: hoursAgo(3) },
+    { kind: "request", subject: "Project work request: Customer portal redesign discovery", description: "Scope a 6-week discovery with Product.", status: "open", priority: "medium", requesterId: requesters[5]!.id, source: "portal", workspace: "pwr", createdAt: daysAgo(2), updatedAt: daysAgo(2) },
+  ]);
+
+  // ---------- Automation rules (code-defined; this is enablement + history) ----------
+  await db.insert(schema.automationRules).values([
+    { key: "auto-close", name: "Auto-close resolved tickets", description: "Resolved tickets with no requester reply for 3 days are closed and the requester is asked for a rating.", kind: "closure", schedule: "hourly", config: { days: 3 }, lastRunAt: hoursAgo(0.4), lastResult: "2 closed", runs: 412 },
+    { key: "round-robin", name: "Assign unassigned tickets", description: "Open, unassigned tickets in a group go to the least-loaded agent in that group.", kind: "assignment", schedule: "every 5 min", config: {}, lastRunAt: hoursAgo(0.05), lastResult: "3 assigned", runs: 9_884 },
+    { key: "pending-reminder", name: "Remind waiting requesters", description: "Tickets waiting on the requester for 2 days get a reminder; after 7 days they close automatically.", kind: "supervisor", schedule: "daily 09:00", config: { remindAfterDays: 2, closeAfterDays: 7 }, lastRunAt: daysAgo(0, 1), lastResult: "5 reminded · 1 closed", runs: 118 },
+    { key: "sla-warning", name: "SLA at-risk warning", description: "Notify the assignee (and the team lead for high/urgent) when 75% of the allowance is used.", kind: "supervisor", schedule: "every 15 min", config: { threshold: 0.75 }, lastRunAt: hoursAgo(0.2), lastResult: "4 notified", runs: 3_301 },
+    { key: "alert-dedupe", name: "Alert de-duplication", description: "Repeats of the same alert within 24 h are folded into the existing one instead of creating a new incident.", kind: "alert", schedule: "on alert", config: { windowHours: 24 }, lastRunAt: hoursAgo(1), lastResult: "1 folded", runs: 77 },
+    { key: "alert-to-incident", name: "High alerts become incidents", description: "Defender high-severity alerts open an urgent incident automatically and page the on-call agent.", kind: "alert", schedule: "on alert", config: { autoCreate: ["defender:high"] }, lastRunAt: daysAgo(6), lastResult: "1 incident created", runs: 9 },
+  ]);
+
+  // ---------- Custom fields (Field Manager) ----------
+  await db.insert(schema.customFields).values([
+    { entity: "ticket", key: "cost_centre", label: "Cost centre", type: "text", position: 0 },
+    { entity: "ticket", key: "location", label: "Office", type: "select", options: OFFICES, position: 1 },
+    { entity: "ticket", key: "vip", label: "VIP requester", type: "toggle", position: 2 },
+    { entity: "ticket", key: "justification", label: "Business justification", type: "textarea", position: 3, workspace: "finance" },
+  ]);
+
+  // ---------- Asset relationships ----------
+  const laptops = fullAssets.filter((a) => a.type === "laptop").slice(0, 6);
+  const monitors = (await db.select({ id: schema.assets.id }).from(schema.assets).where(sql`type = 'monitor'`)).slice(0, 6);
+  const server = await db.select({ id: schema.assets.id }).from(schema.assets).where(sql`type = 'server'`).limit(1);
+  const relRows: (typeof schema.assetRelationships.$inferInsert)[] = [];
+  laptops.forEach((l, i) => { if (monitors[i]) relRows.push({ fromAssetId: l.id, toAssetId: monitors[i]!.id, type: "connected_to" }); if (server[0]) relRows.push({ fromAssetId: l.id, toAssetId: server[0].id, type: "depends_on" }); });
+  if (relRows.length) await db.insert(schema.assetRelationships).values(relRows);
 
   // ---------- Releases ----------
   await db.insert(schema.releases).values([

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Archive, Building2, Laptop, Mail, MapPin, Smartphone, UserRound } from "lucide-react";
+import { and, asc, or, isNull } from "drizzle-orm";
 import { formatTicketRef } from "@ticketfly/core";
 import { requireStaff } from "@/lib/auth";
 import { getTicket, listAgents, listCategories, listGroups } from "@/lib/queries";
@@ -10,6 +11,11 @@ import { Avatar } from "@/components/ui/avatar";
 import { KindTag, PriorityMark, StatusDot, StatusPill, Tag } from "@/components/ui/pills";
 import { Composer } from "./composer";
 import { HeaderActions } from "./header-actions";
+import { CustomFields } from "./custom-fields";
+import { Markdown } from "@/components/ui/markdown";
+import { SCENARIOS } from "@/lib/automation";
+import { workspaceContext } from "@/lib/workspace";
+import { Paperclip } from "lucide-react";
 import { Properties } from "./properties";
 import { SlaBlock } from "./sla-block";
 import { TaskList } from "@/components/ui/task-list";
@@ -29,6 +35,10 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
   if (!data) notFound();
   const { ticket: t, requester, messages, assignee, manager, devices, recent, activity, sla } = data;
   const tasks = await listTasksFor("ticket", t.id);
+  const { current } = await workspaceContext(me);
+  const files = await db.select({ id: schema.attachments.id, name: schema.attachments.name, size: schema.attachments.size, mime: schema.attachments.mime, createdAt: schema.attachments.createdAt }).from(schema.attachments).where(eq(schema.attachments.ticketId, t.id)).orderBy(asc(schema.attachments.createdAt));
+  const customFields = await db.select().from(schema.customFields).where(and(eq(schema.customFields.entity, "ticket"), or(isNull(schema.customFields.workspace), eq(schema.customFields.workspace, t.workspace)))).orderBy(asc(schema.customFields.position));
+  void current;
   const problem = t.problemId ? (await db.select({ id: schema.problems.id, title: schema.problems.title, workaround: schema.problems.workaround, status: schema.problems.status }).from(schema.problems).where(eq(schema.problems.id, t.problemId)).limit(1))[0] ?? null : null;
   const ref = t.legacyRef ?? formatTicketRef(t.id);
 
@@ -77,7 +87,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
                       {shortTime(t.createdAt)}
                     </span>
                   </div>
-                  <div className="prose-tf mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">{t.description || <span className="text-ink-3">No description.</span>}</div>
+                  {t.description ? <Markdown text={t.description} className="prose-tf mt-2 text-[13.5px] leading-relaxed text-ink" /> : <p className="mt-2 text-[13.5px] text-ink-3">No description.</p>}
                 </div>
               </li>
               {messages.map(({ m, author, authorRole }) =>
@@ -102,7 +112,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
                           {shortTime(m.createdAt)}
                         </span>
                       </div>
-                      <div className="prose-tf mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">{m.body}</div>
+                      <Markdown text={m.body} className="prose-tf mt-2 text-[13.5px] leading-relaxed text-ink" />
                       {m.attachments.length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {m.attachments.map((a) => (
@@ -117,13 +127,28 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
                 ),
               )}
             </ol>
+            {files.length > 0 && (
+              <section className="mt-5 rounded-xl bg-surface p-4 hairline">
+                <p className="label mb-2">Attachments · {files.length}</p>
+                <ul className="flex flex-wrap gap-2">
+                  {files.map((f) => (
+                    <li key={f.id}>
+                      <a href={`/api/attachments/${f.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-surface-2 px-2.5 py-1.5 text-[12.5px] hover:bg-surface-3">
+                        <Paperclip className="size-3.5 text-ink-3" /> {f.name} <span className="text-ink-4">{(f.size / 1024).toFixed(0)} KB</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
           </div>
-          <Composer ticketId={t.id} status={t.status} requesterName={requester?.displayName ?? ""} />
+          <Composer ticketId={t.id} status={t.status} requesterName={requester?.displayName ?? ""} scenarios={SCENARIOS} />
         </div>
 
         {/* Properties */}
         <aside className="w-[320px] shrink-0 overflow-y-auto bg-surface hairline-l">
           <Properties ticket={{ id: t.id, status: t.status, priority: t.priority, assigneeId: t.assigneeId, groupId: t.groupId, categoryId: t.categoryId }} agents={agents} groups={groups} categories={categories} department={requester?.department ?? null} />
+          <CustomFields ticketId={t.id} fields={customFields} values={t.custom} />
           <SlaBlock first={sla.first} resolution={sla.resolution} status={t.status} />
           {problem && (
             <section className="px-5 py-4 hairline-t">

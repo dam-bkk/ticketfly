@@ -3,12 +3,13 @@ import { db, schema } from "@ticketfly/db";
 import { and, asc, count, desc, eq, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 /** Freshservice-style inventory list with the right-hand filter panel semantics. */
-export type InventoryFilter = { q?: string; type?: string; status?: string; location?: string; department?: string; usedBy?: string; managedBy?: string; impact?: string; source?: string; page?: number };
+export type InventoryFilter = { workspace?: string; q?: string; type?: string; status?: string; location?: string; department?: string; usedBy?: string; managedBy?: string; impact?: string; source?: string; page?: number };
 
 export async function listInventory(f: InventoryFilter) {
   const a = schema.assets;
   const owner = schema.people;
   const conds = [];
+  if (f.workspace) conds.push(eq(a.workspace, f.workspace));
   if (f.q) conds.push(or(ilike(a.name, `%${f.q}%`), ilike(a.assetTag, `%${f.q}%`), ilike(a.serial, `%${f.q}%`), ilike(a.model, `%${f.q}%`), ilike(a.hostname, `%${f.q}%`), ilike(owner.displayName, `%${f.q}%`))!);
   if (f.type) conds.push(eq(a.type, f.type as never));
   if (f.status) conds.push(eq(a.status, f.status as never));
@@ -79,7 +80,11 @@ export async function getAssetFull(id: number) {
   const contracts = await db.select().from(schema.contracts).where(row.a.vendor ? ilike(schema.contracts.vendor, `%${row.a.vendor}%`) : sql`false`).limit(5);
   const pos = await db.select().from(schema.purchaseOrders).where(row.a.vendor ? ilike(schema.purchaseOrders.vendor, `%${row.a.vendor}%`) : sql`false`).limit(5);
   const peers = await db.select({ id: a.id, name: a.name, assetTag: a.assetTag, type: a.type, model: a.model }).from(a).where(and(row.owner ? eq(a.ownerId, row.owner.id) : sql`false`, sql`${a.id} <> ${id}`)).limit(6);
-  return { ...row, managedBy, managedByGroup, software, assignments, tickets, activity, contracts, pos, peers };
+  const relOut = await db.select({ r: schema.assetRelationships, name: a.name, assetTag: a.assetTag, type: a.type, model: a.model }).from(schema.assetRelationships).innerJoin(a, eq(a.id, schema.assetRelationships.toAssetId)).where(eq(schema.assetRelationships.fromAssetId, id));
+  const relIn = await db.select({ r: schema.assetRelationships, name: a.name, assetTag: a.assetTag, type: a.type, model: a.model }).from(schema.assetRelationships).innerJoin(a, eq(a.id, schema.assetRelationships.fromAssetId)).where(eq(schema.assetRelationships.toAssetId, id));
+  const attachmentsCount = 0;
+  const allAssets = await db.select({ id: a.id, name: a.name, assetTag: a.assetTag }).from(a).where(sql`${a.id} <> ${id}`).orderBy(asc(a.name)).limit(400);
+  return { ...row, managedBy, managedByGroup, software, assignments, tickets, activity, contracts, pos, peers, relOut, relIn, allAssets, attachmentsCount };
 }
 
 export async function listContracts() {

@@ -63,7 +63,19 @@ export default async function PortalHome() {
         </div>
       </section>
 
-      <section className="mt-14 grid gap-10 lg:grid-cols-[1.4fr_1fr]">
+      <section className="mt-10">
+        <h2 className="text-[13px] font-medium text-ink-3">Quick links</h2>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {[["COPE", "Access to SOP Library", "https://cope.qigroup.com"], ["SDPR", "Self-service password reset", "https://passwordreset.microsoftonline.com"], ["Intranet", "Global Staff Portal", "https://intranet.qigroup.com"], ["HRMS", "Leave & HR platform", "https://hrms.qigroup.com"], ["SSP", "Change your Microsoft 365 password", "https://mysignins.microsoft.com"], ["Office 365", "Microsoft web applications", "https://office.com"]].map(([name, desc, href]) => (
+            <a key={name} href={href} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-xl bg-surface px-3.5 py-2 transition-colors hairline hover:bg-surface-2">
+              <span className="text-[13px] font-semibold tracking-[-0.01em]">{name}</span>
+              <span className="text-[12px] text-ink-3">{desc}</span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-12 grid gap-10 lg:grid-cols-[1.4fr_1fr]">
         <div>
           <div className="flex items-baseline justify-between">
             <h2 className="text-[16px] font-semibold tracking-[-0.01em]">Your requests</h2>

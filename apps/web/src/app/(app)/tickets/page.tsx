@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatTicketRef } from "@ticketfly/core";
 import { requireStaff } from "@/lib/auth";
 import { inboxCounts, listInbox, type InboxFilter } from "@/lib/queries";
+import { workspaceContext } from "@/lib/workspace";
 import { cn, relTime } from "@/lib/utils";
 import { Topbar } from "@/components/shell/topbar";
 import { Avatar } from "@/components/ui/avatar";
@@ -26,7 +27,8 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   const me = await requireStaff();
   const sp = await searchParams;
   const filter = (TABS.some((t) => t.key === sp.f) ? sp.f : "open") as InboxFilter;
-  const [rows, counts] = await Promise.all([listInbox({ filter, meId: me.id, q: sp.q }), inboxCounts(me.id)]);
+  const { current } = await workspaceContext(me);
+  const [rows, counts] = await Promise.all([listInbox({ filter, meId: me.id, q: sp.q, workspace: current.slug }), inboxCounts(me.id, current.slug)]);
   const countFor: Partial<Record<InboxFilter, number>> = { open: counts.open, mine: counts.mine, unassigned: counts.unassigned, at_risk: counts.atRisk, waiting: counts.waiting, legacy: counts.legacy };
 
   return (

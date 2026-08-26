@@ -9,6 +9,11 @@ import { cn, longTime, relTime, shortTime } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
+import { Markdown } from "@/components/ui/markdown";
+import { uploadAttachment } from "@/app/extra-actions";
+import { db, schema } from "@ticketfly/db";
+import { asc, eq } from "drizzle-orm";
+import { Paperclip } from "lucide-react";
 
 export default async function RequestPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ new?: string }> }) {
   const me = await requirePrincipal();
@@ -20,6 +25,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
   const staff = me.role === "agent" || me.role === "admin" || me.role === "hr";
   if (!staff && t.requesterId !== me.id) redirect("/portal");
   const visible = messages.filter(({ m }) => m.kind !== "note");
+  const files = await db.select({ id: schema.attachments.id, name: schema.attachments.name, size: schema.attachments.size }).from(schema.attachments).where(eq(schema.attachments.ticketId, t.id)).orderBy(asc(schema.attachments.createdAt));
   const steps = ["Received", "Picked up", "In progress", "Resolved"];
   const stepIdx = t.status === "resolved" || t.status === "closed" ? 3 : t.status === "in_progress" || t.status === "pending" || t.status === "on_hold" ? 2 : assignee ? 1 : 0;
   const closed = t.status === "resolved" || t.status === "closed";
@@ -80,16 +86,32 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
         )}
       </section>
 
+      {files.length > 0 && (
+        <section className="mt-6 rounded-xl bg-surface p-4 hairline">
+          <p className="label mb-2">Attachments</p>
+          <ul className="flex flex-wrap gap-2">
+            {files.map((f) => (
+              <li key={f.id}><a href={`/api/attachments/${f.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-surface-2 px-2.5 py-1.5 text-[12.5px] hover:bg-surface-3"><Paperclip className="size-3.5 text-ink-3" /> {f.name}</a></li>
+            ))}
+          </ul>
+        </section>
+      )}
       {!closed ? (
-        <form action={replyToTicket.bind(null, t.id)} className="mt-6 rounded-2xl bg-surface p-4 shadow-1 hairline">
-          <Textarea name="body" required placeholder={t.status === "pending" ? "IT is waiting for your reply…" : "Add more detail or ask a question"} className="min-h-20 shadow-none focus:shadow-none" />
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-[12px] text-ink-3">Replies also go by email — you can answer from your inbox.</span>
-            <Button type="submit" variant="primary">
-              Send
-            </Button>
-          </div>
-        </form>
+        <>
+          <form action={replyToTicket.bind(null, t.id)} className="mt-6 rounded-2xl bg-surface p-4 shadow-1 hairline">
+            <Textarea name="body" required placeholder={t.status === "pending" ? "IT is waiting for your reply…" : "Add more detail or ask a question"} className="min-h-20 shadow-none focus:shadow-none" />
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[12px] text-ink-3">Replies also go by email — you can answer from your inbox.</span>
+              <Button type="submit" variant="primary">Send</Button>
+            </div>
+          </form>
+          <form action={uploadAttachment.bind(null, t.id)} className="mt-2 flex items-center gap-2 px-1 text-[12.5px] text-ink-3">
+            <Paperclip className="size-3.5" />
+            <input type="file" name="files" multiple className="text-[12px]" />
+            <Button type="submit" variant="ghost" size="sm">Attach</Button>
+            <span className="text-ink-4">screenshots help — under 40 MB each</span>
+          </form>
+        </>
       ) : (
         <div className="mt-6 rounded-2xl bg-surface p-5 text-center hairline">
           <p className="text-[14px] font-medium">How did we do?</p>
@@ -118,7 +140,7 @@ function Message({ name, mine, time, body, it }: { name: string; mine: boolean; 
           {it && !mine && <span className="text-ink-3">IT</span>}
           <span className="text-ink-4">{shortTime(time)}</span>
         </p>
-        <p className="mt-1 whitespace-pre-wrap text-[13.5px] leading-relaxed">{body}</p>
+        <Markdown text={body} className="mt-1 text-[13.5px] leading-relaxed" />
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ const WORKSPACES: [string, React.ReactNode, boolean][] = [
   ["Strategic Initiatives Portal", <Shield key="5" className="size-4" />, false],
 ];
 
-const PAGES: [string, string][] = [["/admin", "Admin home"], ["/admin/general", "Service desk settings"], ["/admin/sla", "SLA and OLA policies"], ["/admin/roles", "Roles"], ["/admin/integrations", "Integrations"], ["/admin/activity", "Activity log"], ["/admin/releases", "Releases"], ["/admin/status", "System status"]];
+const PAGES: [string, string][] = [["/admin", "Admin home"], ["/admin/general", "Service desk settings"], ["/admin/sla", "SLA and OLA policies"], ["/admin/roles", "Roles"], ["/admin/workspaces", "Manage Workspaces"], ["/admin/fields", "Field Manager"], ["/admin/automation", "Automation"], ["/admin/integrations", "Integrations"], ["/admin/activity", "Activity log"], ["/admin/releases", "Releases"], ["/admin/status", "System status"]];
 
 /** Freshservice's admin left pane: Global Settings on top, workspaces below. Workspace isolation is a later phase; the pane is here so the muscle memory is. */
 export function SettingsNav() {
@@ -39,7 +39,7 @@ export function SettingsNav() {
           </li>
         ))}
       </ul>
-      <p className="mt-2 px-1 text-[11px] text-ink-4">Per-workspace isolation: Phase 3</p>
+      <p className="mt-2 px-1 text-[11px] text-ink-4">Agents see only their workspaces; admins see all.</p>
       <p className="label mb-1.5 mt-5 px-1">Pages</p>
       {PAGES.map(([href, label]) => (
         <Link key={href} href={href} className={cn("block h-8 rounded-md px-2 text-[13px] leading-8 text-ink-2 hover:bg-surface-2 hover:text-ink", path === href && "bg-accent-soft font-medium text-accent-ink hover:bg-accent-soft hover:text-accent-ink")}>

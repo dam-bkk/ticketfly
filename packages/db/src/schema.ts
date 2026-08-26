@@ -96,6 +96,8 @@ export const tickets = pgTable(
     satisfaction: integer("satisfaction"),
     problemId: integer("problem_id"),
     changeId: integer("change_id"),
+    workspace: text("workspace").notNull().default("it"),
+    custom: jsonb("custom").$type<Record<string, string>>().notNull().default({}),
     raw: jsonb("raw"),
     search: tsvector("search").generatedAlwaysAs(
       (): SQL => sql`setweight(to_tsvector('english', coalesce(${tickets.subject}, '')), 'A') || setweight(to_tsvector('english', coalesce(${tickets.description}, '')), 'B') || setweight(to_tsvector('simple', coalesce(${tickets.legacyRef}, '')), 'A')`,
@@ -202,6 +204,7 @@ export const assets = pgTable(
     discoveryEnabled: boolean("discovery_enabled").notNull().default(true),
     acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
     returnedAt: timestamp("returned_at", { withTimezone: true }),
+    workspace: text("workspace").notNull().default("it"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -561,5 +564,71 @@ export const notifications = pgTable(
 export const userPrefs = pgTable("user_prefs", {
   personId: integer("person_id").primaryKey(),
   hiddenModules: jsonb("hidden_modules").$type<string[]>().notNull().default([]),
+  notify: jsonb("notify").$type<Record<string, { inApp: boolean; email: boolean; teams: boolean }>>().notNull().default({}),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ---------- Attachments (bytea adapter for the demo; Blob adapter in Azure keeps the same table minus `data`) ----------
+export const attachments = pgTable(
+  "attachments",
+  {
+    id: serial("id").primaryKey(),
+    ticketId: integer("ticket_id").notNull(),
+    messageId: integer("message_id"),
+    name: text("name").notNull(),
+    mime: text("mime").notNull().default("application/octet-stream"),
+    size: integer("size").notNull().default(0),
+    data: customType<{ data: Buffer }>({ dataType: () => "bytea" })("data"),
+    blobUrl: text("blob_url"),
+    uploadedBy: integer("uploaded_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("attachments_ticket_idx").on(t.ticketId)],
+);
+
+// ---------- Automation (rules are code; this table holds enablement + run history) ----------
+export const automationRules = pgTable("automation_rules", {
+  key: text("key").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  kind: text("kind").notNull().default("supervisor"),
+  schedule: text("schedule").notNull().default("hourly"),
+  enabled: boolean("enabled").notNull().default(true),
+  config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+  lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  lastResult: text("last_result"),
+  runs: integer("runs").notNull().default(0),
+});
+
+// ---------- Asset relationships (CMDB-lite) ----------
+export const assetRelationships = pgTable(
+  "asset_relationships",
+  {
+    id: serial("id").primaryKey(),
+    fromAssetId: integer("from_asset_id").notNull(),
+    toAssetId: integer("to_asset_id").notNull(),
+    type: text("type").notNull().default("connected_to"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("asset_rel_from_idx").on(t.fromAssetId), index("asset_rel_to_idx").on(t.toAssetId)],
+);
+
+// ---------- Custom fields (Field Manager) ----------
+export const customFields = pgTable("custom_fields", {
+  id: serial("id").primaryKey(),
+  entity: text("entity").notNull().default("ticket"),
+  key: text("key").notNull(),
+  label: text("label").notNull(),
+  type: text("type").notNull().default("text"),
+  options: jsonb("options").$type<string[]>().notNull().default([]),
+  required: boolean("required").notNull().default(false),
+  position: integer("position").notNull().default(0),
+  workspace: text("workspace"),
+});
+
+// ---------- Workspaces membership ----------
+export const workspaceMembers = pgTable(
+  "workspace_members",
+  { workspace: text("workspace").notNull(), personId: integer("person_id").notNull(), role: text("role").notNull().default("agent") },
+  (t) => [primaryKey({ columns: [t.workspace, t.personId] })],
+);

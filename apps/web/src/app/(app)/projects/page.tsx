@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus, Table2 } from "lucide-react";
 import { requireStaff } from "@/lib/auth";
 import { listProjects } from "@/lib/modules";
+import { workspaceContext } from "@/lib/workspace";
 import { Topbar } from "@/components/shell/topbar";
 import { Avatar } from "@/components/ui/avatar";
 import { ButtonLink } from "@/components/ui/button";
@@ -10,8 +11,9 @@ import { Tone } from "@/components/ui/pills";
 export const metadata = { title: "Projects" };
 
 export default async function ProjectsPage() {
-  await requireStaff();
-  const rows = await listProjects();
+  const me = await requireStaff();
+  const { current } = await workspaceContext(me);
+  const rows = await listProjects(current.slug);
   return (
     <>
       <Topbar

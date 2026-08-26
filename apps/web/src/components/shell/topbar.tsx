@@ -6,13 +6,15 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 import { cn } from "@/lib/utils";
 import { getPrincipal } from "@/lib/auth";
 import { unreadCount } from "@/lib/modules";
+import { workspaceContext } from "@/lib/workspace";
 
 export async function Topbar({ crumbs, actions, className, workspace = true }: { crumbs: { label: string; href?: string }[]; actions?: React.ReactNode; className?: string; workspace?: boolean }) {
   const me = await getPrincipal();
   const unread = me ? await unreadCount(me.id) : 0;
+  const ws = me && workspace ? await workspaceContext(me) : null;
   return (
     <header className={cn("flex h-12 shrink-0 items-center gap-3 bg-surface px-4 hairline-b", className)}>
-      {workspace && <WorkspaceSwitcher />}
+      {ws && <WorkspaceSwitcher current={ws.current} allowed={ws.allowed} />}
       <nav className="flex min-w-0 items-center gap-1 text-[13px]">
         {crumbs.map((c, i) => (
           <span key={i} className="flex items-center gap-1">

@@ -144,9 +144,9 @@ export async function listServices() {
 }
 
 // ---------- Projects ----------
-export async function listProjects() {
+export async function listProjects(workspace?: string) {
   const p = schema.projects;
-  return db.select({ p, owner: personName(p.ownerId), rows: sql<number>`(select count(*)::int from project_rows r where r.project_id = ${p.id})`, done: sql<number>`(select count(*)::int from project_rows r where r.project_id = ${p.id} and r.status = 'done')`, pct: sql<number>`coalesce((select avg(percent)::int from project_rows r where r.project_id = ${p.id} and r.parent_id is null), 0)` }).from(p).orderBy(asc(p.status), asc(p.startDate));
+  return db.select({ p, owner: personName(p.ownerId), rows: sql<number>`(select count(*)::int from project_rows r where r.project_id = ${p.id})`, done: sql<number>`(select count(*)::int from project_rows r where r.project_id = ${p.id} and r.status = 'done')`, pct: sql<number>`coalesce((select avg(percent)::int from project_rows r where r.project_id = ${p.id} and r.parent_id is null), 0)` }).from(p).where(workspace ? eq(p.workspace, workspace) : undefined).orderBy(asc(p.status), asc(p.startDate));
 }
 export async function getProject(id: number) {
   const [p] = await db.select({ p: schema.projects, owner: personName(schema.projects.ownerId) }).from(schema.projects).where(eq(schema.projects.id, id)).limit(1);
@@ -167,7 +167,7 @@ export async function unreadCount(personId: number) {
 }
 export async function getPrefs(personId: number) {
   const [r] = await db.select().from(schema.userPrefs).where(eq(schema.userPrefs.personId, personId)).limit(1);
-  return r ?? { personId, hiddenModules: [] as string[], updatedAt: new Date() };
+  return r ?? { personId, hiddenModules: [] as string[], notify: {} as Record<string, { inApp: boolean; email: boolean; teams: boolean }>, updatedAt: new Date() };
 }
 
 // ---------- Reporting ----------

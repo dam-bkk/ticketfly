@@ -6,9 +6,10 @@ import { slaFor } from "./sla";
 
 export type InboxFilter = "open" | "mine" | "unassigned" | "at_risk" | "waiting" | "resolved" | "all" | "legacy";
 
-export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: string; groupId?: number; limit?: number }) {
+export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: string; groupId?: number; limit?: number; workspace?: string }) {
   const t = schema.tickets;
   const conds = [];
+  if (opts.workspace) conds.push(eq(t.workspace, opts.workspace));
   const openStatuses = ["open", "in_progress", "pending", "on_hold"] as const;
   switch (opts.filter) {
     case "open":
@@ -69,7 +70,7 @@ export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: s
   return rows.map((r) => ({ ...r, sla: slaFor(r, r.firstRespondedAt ? "resolution" : "first_response") }));
 }
 
-export async function inboxCounts(meId: number) {
+export async function inboxCounts(meId: number, workspace?: string) {
   const t = schema.tickets;
   const open = ["open", "in_progress", "pending", "on_hold"] as const;
   const [row] = await db
@@ -81,7 +82,8 @@ export async function inboxCounts(meId: number) {
       atRisk: sql<number>`count(*) filter (where ${t.status} in ('open','in_progress') and (${t.resolutionDueAt} < now() + interval '24 hours' or (${t.firstRespondedAt} is null and ${t.firstResponseDueAt} < now() + interval '1 hour')))::int`,
       legacy: sql<number>`count(*) filter (where ${t.legacyRef} is not null)::int`,
     })
-    .from(t);
+    .from(t)
+    .where(workspace ? eq(t.workspace, workspace) : undefined);
   void open;
   return row!;
 }

@@ -2,7 +2,7 @@
 
 import { db, schema } from "@ticketfly/db";
 import { canTransition, isSlaPaused, type TicketStatus } from "@ticketfly/core";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -135,6 +135,15 @@ export async function createRequest(slug: string, formData: FormData) {
     .returning({ id: schema.tickets.id });
   const id = t!.id;
   await logActivity(me, { action: "ticket.create", category: "ticket", targetType: "ticket", targetId: id, after: { service: slug, kind: service.kind } });
+  if (slug === "project-request") {
+    // Enhancement: an IT project work request lands on the prioritisation grid as well as in the queue.
+    const [backlog] = await db.select({ id: schema.projects.id }).from(schema.projects).where(eq(schema.projects.workspace, "pwr")).limit(1);
+    if (backlog) {
+      const [pos] = (await db.execute(sql`select coalesce(max(position),-1)+1 as n from project_rows where project_id = ${backlog.id}`)) as unknown as { n: number }[];
+      await db.insert(schema.projectRows).values({ projectId: backlog.id, position: Number(pos?.n ?? 0), title: answers.title ?? subject, status: "not_started", endDate: answers.when || null, priority: "medium", notes: `Requested by ${me.displayName}${answers.sponsor ? ` · sponsor ${answers.sponsor}` : ""}`, ticketId: id });
+    }
+    await db.update(schema.tickets).set({ workspace: "pwr" }).where(eq(schema.tickets.id, id));
+  }
   if (service.kind === "onboarding" && answers.join) {
     await db.insert(schema.ticketMessages).values({ ticketId: id, authorId: null, kind: "system", body: `Onboarding workflow started. Account and licences due ${answers.join} minus 5 working days.`, via: "system" });
   }

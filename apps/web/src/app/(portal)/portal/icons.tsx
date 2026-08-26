@@ -1,4 +1,4 @@
-import { AlertCircle, Box, KeyRound, Laptop, MessageCircle, Package, ShieldAlert, Smartphone, UserMinus, UserPlus, Wifi } from "lucide-react";
+import { AlertCircle, Box, Kanban, KeyRound, Laptop, MessageCircle, Package, ShieldAlert, Smartphone, UserMinus, UserPlus, Wifi } from "lucide-react";
 
 export function ServiceIcon({ name, className }: { name: string; className?: string }) {
   const map: Record<string, React.ReactNode> = {
@@ -12,6 +12,7 @@ export function ServiceIcon({ name, className }: { name: string; className?: str
     "shield-alert": <ShieldAlert className={className} />,
     wifi: <Wifi className={className} />,
     "message-circle": <MessageCircle className={className} />,
+    kanban: <Kanban className={className} />,
   };
   return <>{map[name] ?? <Box className={className} />}</>;
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Download, Laptop, Monitor, Plus, Server, Smartphone, Tablet, Keyboard, Upload } from "lucide-react";
 import { requireStaff } from "@/lib/auth";
 import { listInventory, type InventoryFilter } from "@/lib/assets";
+import { workspaceContext } from "@/lib/workspace";
 import { cn, relTime } from "@/lib/utils";
 import { Topbar } from "@/components/shell/topbar";
 import { Avatar } from "@/components/ui/avatar";
@@ -23,14 +24,15 @@ const ICON: Record<string, React.ReactNode> = {
 const TYPE_LABEL: Record<string, string> = { laptop: "Laptop", desktop: "Desktop", mobile: "Mobile", tablet: "Tablet", monitor: "Monitor", peripheral: "Peripheral", server: "Server" };
 
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  await requireStaff();
+  const me = await requireStaff();
+  const { current } = await workspaceContext(me);
   const sp = await searchParams;
-  const f: InventoryFilter = { q: sp.q, type: sp.type, status: sp.status, location: sp.location, department: sp.department, usedBy: sp.usedBy, managedBy: sp.managedBy, impact: sp.impact, source: sp.source, page: Number(sp.page ?? 1) };
+  const f: InventoryFilter = { workspace: current.slug, q: sp.q, type: sp.type, status: sp.status, location: sp.location, department: sp.department, usedBy: sp.usedBy, managedBy: sp.managedBy, impact: sp.impact, source: sp.source, page: Number(sp.page ?? 1) };
   const { rows, total, page, pageSize, facets, k } = await listInventory(f);
-  const activeFilters = Object.entries(f).filter(([key, v]) => key !== "page" && v).length;
+  const activeFilters = Object.entries(f).filter(([key, v]) => key !== "page" && key !== "workspace" && v).length;
   const qs = (patch: Record<string, string | number | undefined>) => {
     const p = new URLSearchParams();
-    for (const [key, v] of Object.entries({ ...f, ...patch })) if (v !== undefined && v !== "" && !(key === "page" && Number(v) <= 1)) p.set(key, String(v));
+    for (const [key, v] of Object.entries({ ...f, ...patch })) if (key !== "workspace" && v !== undefined && v !== "" && !(key === "page" && Number(v) <= 1)) p.set(key, String(v));
     const s = p.toString();
     return `/assets/inventory${s ? `?${s}` : ""}`;
   };
@@ -71,7 +73,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
 
           <div className="flex shrink-0 items-center gap-2 px-4 py-2">
             <form className="flex items-center gap-2">
-              {Object.entries(f).map(([key, v]) => (key !== "q" && key !== "page" && v ? <input key={key} type="hidden" name={key} value={String(v)} /> : null))}
+              {Object.entries(f).map(([key, v]) => (key !== "q" && key !== "page" && key !== "workspace" && v ? <input key={key} type="hidden" name={key} value={String(v)} /> : null))}
               <input name="q" defaultValue={f.q} placeholder="Search" className="h-8 w-[420px] rounded-md bg-surface px-3 text-[13px] hairline focus:outline-none focus:shadow-[inset_0_0_0_1px_var(--accent),0_0_0_3px_var(--ring)]" />
             </form>
             {activeFilters > 0 && (

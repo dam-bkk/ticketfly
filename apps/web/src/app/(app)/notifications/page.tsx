@@ -23,11 +23,14 @@ export default async function NotificationsPage() {
       <Topbar
         crumbs={[{ label: "Notifications" }]}
         actions={
+          <>
+          <Link href="/notifications/preferences" className="h-8 rounded-md px-3 text-[12.5px] font-medium leading-8 text-ink-2 hairline hover:bg-surface-2">Preferences</Link>
           <form action={markAllRead}>
             <Button type="submit" size="sm" variant="secondary" disabled={!unread}>
               <CheckCheck className="size-3.5" /> Mark all read
             </Button>
           </form>
+          </>
         }
       />
       <div className="flex-1 overflow-y-auto">

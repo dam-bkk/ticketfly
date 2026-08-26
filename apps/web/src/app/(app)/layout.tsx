@@ -3,11 +3,13 @@ import { inArray, sql } from "drizzle-orm";
 import { APP_VERSION, requireStaff } from "@/lib/auth";
 import { inboxCounts } from "@/lib/queries";
 import { getPrefs } from "@/lib/modules";
+import { workspaceContext } from "@/lib/workspace";
 import { Sidebar } from "@/components/shell/sidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireStaff();
-  const c = await inboxCounts(me.id);
+  const { current } = await workspaceContext(me);
+  const c = await inboxCounts(me.id, current.slug);
   const [ob] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.onboardings).where(inArray(schema.onboardings.stage, ["requested", "provisioning", "ready", "blocked"]));
   const [extra] = (await db.execute(sql`select
     (select count(*) from changes c, jsonb_array_elements(c.approvals) a where c.status = 'awaiting_approval' and (a->>'personId')::int = ${me.id} and a->>'decision' = 'pending')::int as approvals,

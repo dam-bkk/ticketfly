@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatTicketRef } from "@ticketfly/core";
 import { requireStaff } from "@/lib/auth";
 import { listInbox } from "@/lib/queries";
+import { workspaceContext } from "@/lib/workspace";
 import { cn, relTime, STATUS_SHORT } from "@/lib/utils";
 import { Topbar } from "@/components/shell/topbar";
 import { Avatar } from "@/components/ui/avatar";
@@ -13,8 +14,9 @@ const COLUMNS = ["open", "in_progress", "pending", "on_hold", "resolved"] as con
 
 export default async function BoardPage() {
   const me = await requireStaff();
-  const rows = await listInbox({ filter: "open", meId: me.id, limit: 400 });
-  const resolved = await listInbox({ filter: "resolved", meId: me.id, limit: 40 });
+  const { current } = await workspaceContext(me);
+  const rows = await listInbox({ filter: "open", meId: me.id, limit: 400, workspace: current.slug });
+  const resolved = await listInbox({ filter: "resolved", meId: me.id, limit: 40, workspace: current.slug });
   const all = [...rows, ...resolved.filter((r) => r.status === "resolved")];
   return (
     <>
