@@ -15,24 +15,25 @@ type Item = Leaf | Group;
 
 const isGroup = (i: Item): i is Group => "children" in i;
 
-export function Sidebar({ me, counts, version }: { me: { displayName: string; jobTitle: string | null; role: string }; counts: { open: number; mine: number; atRisk: number; onboarding: number }; version: string }) {
+export function Sidebar({ me, counts, version, hidden = [] }: { me: { displayName: string; jobTitle: string | null; role: string }; counts: { open: number; mine: number; atRisk: number; onboarding: number; approvals?: number; tasks?: number; alerts?: number }; version: string; hidden?: string[] }) {
   const path = usePathname();
-  const items: Item[] = [
-    { label: "Reporting", icon: <BarChart3 className="size-4" />, children: [{ href: "/reporting", label: "Analytics" }, { href: "/reporting/sla", label: "SLA performance" }] },
-    { href: "/dashboard", label: "Dashboard", icon: <Gauge className="size-4" /> },
-    { label: "Tickets", icon: <Ticket className="size-4" />, defaultOpen: true, children: [{ href: "/tickets", label: "List", icon: <LayoutList className="size-3.5" />, badge: counts.open }, { href: "/tickets/board", label: "Board", icon: <Kanban className="size-3.5" /> }] },
-    { label: "Journeys", icon: <Route className="size-4" />, defaultOpen: true, children: [{ href: "/journeys/onboarding", label: "Onboarding", badge: counts.onboarding, tone: "warn" }, { href: "/journeys/offboarding", label: "Offboarding" }] },
-    { href: "/problems", label: "Problems", icon: <AlertTriangle className="size-4" /> },
-    { href: "/changes", label: "Changes", icon: <GitBranch className="size-4" /> },
-    { href: "/releases", label: "Releases", icon: <Repeat className="size-4" /> },
-    { href: "/tasks", label: "Tasks", icon: <ClipboardList className="size-4" /> },
-    { label: "IT Operations", icon: <Activity className="size-4" />, children: [{ href: "/it-ops/alerts", label: "Alerts" }, { href: "/it-ops/status", label: "Status page" }] },
-    { label: "Assets", icon: <Boxes className="size-4" />, defaultOpen: true, children: [{ href: "/assets/inventory", label: "Inventory" }, { href: "/assets/software", label: "Software" }, { href: "/assets/contracts", label: "Contracts" }, { href: "/assets/purchase-orders", label: "Purchase Orders" }] },
-    { label: "Projects", icon: <FolderKanban className="size-4" />, children: [{ href: "/projects", label: "All projects" }] },
-    { href: "/people", label: "People", icon: <Users className="size-4" /> },
-    { href: "/solutions", label: "Solutions", icon: <BookOpen className="size-4" /> },
-    { href: "/admin", label: "Admin", icon: <Settings className="size-4" /> },
+  const all: [string, Item][] = [
+    ["reporting", { label: "Reporting", icon: <BarChart3 className="size-4" />, children: [{ href: "/reporting", label: "Analytics" }, { href: "/reporting/sla", label: "SLA performance" }] }],
+    ["dashboard", { href: "/dashboard", label: "Dashboard", icon: <Gauge className="size-4" /> }],
+    ["tickets", { label: "Tickets", icon: <Ticket className="size-4" />, defaultOpen: true, children: [{ href: "/tickets", label: "List", icon: <LayoutList className="size-3.5" />, badge: counts.open }, { href: "/tickets/board", label: "Board", icon: <Kanban className="size-3.5" /> }] }],
+    ["journeys", { label: "Journeys", icon: <Route className="size-4" />, defaultOpen: true, children: [{ href: "/journeys/onboarding", label: "Onboarding", badge: counts.onboarding, tone: "warn" }, { href: "/journeys/offboarding", label: "Offboarding" }] }],
+    ["problems", { href: "/problems", label: "Problems", icon: <AlertTriangle className="size-4" /> }],
+    ["changes", { href: "/changes", label: "Changes", icon: <GitBranch className="size-4" />, badge: counts.approvals, tone: "warn" }],
+    ["releases", { href: "/releases", label: "Releases", icon: <Repeat className="size-4" /> }],
+    ["tasks", { href: "/tasks", label: "Tasks", icon: <ClipboardList className="size-4" />, badge: counts.tasks }],
+    ["it-ops", { label: "IT Operations", icon: <Activity className="size-4" />, children: [{ href: "/it-ops/alerts", label: "Alerts", badge: counts.alerts, tone: "warn" }, { href: "/it-ops/status", label: "Status page" }] }],
+    ["assets", { label: "Assets", icon: <Boxes className="size-4" />, defaultOpen: true, children: [{ href: "/assets/inventory", label: "Inventory" }, { href: "/assets/software", label: "Software" }, { href: "/assets/contracts", label: "Contracts" }, { href: "/assets/purchase-orders", label: "Purchase Orders" }] }],
+    ["projects", { label: "Projects", icon: <FolderKanban className="size-4" />, children: [{ href: "/projects", label: "All projects" }, { href: "/projects/new", label: "New project" }] }],
+    ["people", { href: "/people", label: "People", icon: <Users className="size-4" /> }],
+    ["solutions", { href: "/solutions", label: "Solutions", icon: <BookOpen className="size-4" /> }],
+    ["admin", { href: "/admin", label: "Admin", icon: <Settings className="size-4" /> }],
   ];
+  const items = all.filter(([key]) => !hidden.includes(key)).map(([, it]) => it);
   return (
     <aside className="flex h-full w-[220px] shrink-0 flex-col bg-surface hairline-r">
       <div className="flex h-12 items-center px-4">

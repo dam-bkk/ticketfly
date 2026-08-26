@@ -4,8 +4,12 @@ import { CommandPalette } from "./command-palette";
 import { CreateMenu } from "./create-menu";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 import { cn } from "@/lib/utils";
+import { getPrincipal } from "@/lib/auth";
+import { unreadCount } from "@/lib/modules";
 
-export function Topbar({ crumbs, actions, className, workspace = true }: { crumbs: { label: string; href?: string }[]; actions?: React.ReactNode; className?: string; workspace?: boolean }) {
+export async function Topbar({ crumbs, actions, className, workspace = true }: { crumbs: { label: string; href?: string }[]; actions?: React.ReactNode; className?: string; workspace?: boolean }) {
+  const me = await getPrincipal();
+  const unread = me ? await unreadCount(me.id) : 0;
   return (
     <header className={cn("flex h-12 shrink-0 items-center gap-3 bg-surface px-4 hairline-b", className)}>
       {workspace && <WorkspaceSwitcher />}
@@ -28,7 +32,7 @@ export function Topbar({ crumbs, actions, className, workspace = true }: { crumb
         <CreateMenu />
         <Link href="/notifications" aria-label="Notifications" className="relative inline-flex size-8 items-center justify-center rounded-md text-ink-3 hover:bg-surface-2 hover:text-ink">
           <Bell className="size-4" />
-          <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-crit" />
+          {unread > 0 && <span className="tnum absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-crit px-1 text-center text-[10px] font-semibold leading-4 text-white">{unread}</span>}
         </Link>
         {actions}
       </div>

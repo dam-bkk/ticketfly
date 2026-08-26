@@ -8,13 +8,16 @@ import { Select } from "@/components/ui/input";
 
 type Opt = { id: number; displayName?: string; name?: string; jobTitle?: string | null };
 
-export function Properties({ ticket, agents, groups, categories }: { ticket: { id: number; status: TicketStatus; priority: string; assigneeId: number | null; groupId: number | null; categoryId: number | null }; agents: Opt[]; groups: Opt[]; categories: Opt[] }) {
+export function Properties({ ticket, agents, groups, categories, department }: { department: string | null; ticket: { id: number; status: TicketStatus; priority: string; assigneeId: number | null; groupId: number | null; categoryId: number | null }; agents: Opt[]; groups: Opt[]; categories: Opt[] }) {
   const [pending, start] = useTransition();
   const statuses = [ticket.status, ...nextStatuses(ticket.status)];
   const set = (patch: Parameters<typeof updateTicket>[1]) => start(() => updateTicket(ticket.id, patch));
   return (
     <section className="space-y-3 px-5 py-4" aria-busy={pending}>
       <p className="label">Properties</p>
+      <Prop label="Workspace">
+        <span className="flex h-8 items-center gap-2 rounded-md bg-surface-2 px-2.5 text-[13px]"><span className="size-2 rounded-sm bg-ok" /> IT Division</span>
+      </Prop>
       <Prop label="Status">
         <Select value={ticket.status} onChange={(e) => set({ status: e.target.value as TicketStatus })} className="h-8 text-[13px]">
           {statuses.map((s) => (
@@ -33,7 +36,7 @@ export function Properties({ ticket, agents, groups, categories }: { ticket: { i
           ))}
         </Select>
       </Prop>
-      <Prop label="Assignee">
+      <Prop label="Assigned to">
         <Select value={ticket.assigneeId ?? ""} onChange={(e) => set({ assigneeId: e.target.value ? Number(e.target.value) : null })} className="h-8 text-[13px]">
           <option value="">Unassigned</option>
           {agents.map((a) => (
@@ -43,7 +46,10 @@ export function Properties({ ticket, agents, groups, categories }: { ticket: { i
           ))}
         </Select>
       </Prop>
-      <Prop label="Team">
+      <Prop label="Department">
+        <span className="flex h-8 items-center rounded-md bg-surface-2 px-2.5 text-[13px] text-ink-2">{department ?? "—"}</span>
+      </Prop>
+      <Prop label="Group">
         <Select value={ticket.groupId ?? ""} onChange={(e) => set({ groupId: e.target.value ? Number(e.target.value) : null })} className="h-8 text-[13px]">
           <option value="">—</option>
           {groups.map((g) => (

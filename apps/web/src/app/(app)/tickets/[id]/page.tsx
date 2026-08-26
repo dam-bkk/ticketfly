@@ -9,8 +9,13 @@ import { Topbar } from "@/components/shell/topbar";
 import { Avatar } from "@/components/ui/avatar";
 import { KindTag, PriorityMark, StatusDot, StatusPill, Tag } from "@/components/ui/pills";
 import { Composer } from "./composer";
+import { HeaderActions } from "./header-actions";
 import { Properties } from "./properties";
 import { SlaBlock } from "./sla-block";
+import { TaskList } from "@/components/ui/task-list";
+import { listTasksFor } from "@/lib/modules";
+import { db, schema } from "@ticketfly/db";
+import { eq } from "drizzle-orm";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,11 +28,13 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
   const [data, agents, groups, categories] = await Promise.all([getTicket(Number(id)), listAgents(), listGroups(), listCategories()]);
   if (!data) notFound();
   const { ticket: t, requester, messages, assignee, manager, devices, recent, activity, sla } = data;
+  const tasks = await listTasksFor("ticket", t.id);
+  const problem = t.problemId ? (await db.select({ id: schema.problems.id, title: schema.problems.title, workaround: schema.problems.workaround, status: schema.problems.status }).from(schema.problems).where(eq(schema.problems.id, t.problemId)).limit(1))[0] ?? null : null;
   const ref = t.legacyRef ?? formatTicketRef(t.id);
 
   return (
     <>
-      <Topbar crumbs={[{ label: "Tickets", href: "/tickets" }, { label: ref }]} />
+      <Topbar crumbs={[{ label: "Tickets", href: "/tickets" }, { label: ref }]} actions={<HeaderActions ticketId={t.id} status={t.status} />} />
       <div className="flex min-h-0 flex-1">
         {/* Conversation */}
         <div className="flex min-w-0 flex-1 flex-col">
@@ -116,8 +123,23 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
 
         {/* Properties */}
         <aside className="w-[320px] shrink-0 overflow-y-auto bg-surface hairline-l">
-          <Properties ticket={{ id: t.id, status: t.status, priority: t.priority, assigneeId: t.assigneeId, groupId: t.groupId, categoryId: t.categoryId }} agents={agents} groups={groups} categories={categories} />
+          <Properties ticket={{ id: t.id, status: t.status, priority: t.priority, assigneeId: t.assigneeId, groupId: t.groupId, categoryId: t.categoryId }} agents={agents} groups={groups} categories={categories} department={requester?.department ?? null} />
           <SlaBlock first={sla.first} resolution={sla.resolution} status={t.status} />
+          {problem && (
+            <section className="px-5 py-4 hairline-t">
+              <p className="label mb-2">Linked problem</p>
+              <Link href={`/problems/${problem.id}`} className="block rounded-md p-2.5 hairline hover:bg-surface-2">
+                <span className="block text-[13px] font-medium">{problem.title}</span>
+                <span className="text-[12px] text-ink-3">PRB-{problem.id} · {problem.status.replace("_", " ")}</span>
+              </Link>
+              {problem.workaround && <p className="mt-2 rounded-md bg-note p-2.5 text-[12.5px] leading-relaxed"><span className="font-medium">Workaround: </span>{problem.workaround}</p>}
+            </section>
+          )}
+          <section className="px-5 py-4 hairline-t">
+            <p className="label mb-2">Tasks</p>
+            <TaskList rows={tasks} parentType="ticket" parentId={t.id} back={`/tickets/${t.id}`} compact />
+            {!problem && <Link href={`/problems/new?ticket=${t.id}`} className="mt-2 inline-block text-[12px] text-ink-3 hover:text-ink">Seen this before? Raise a problem →</Link>}
+          </section>
 
           <section className="px-5 py-4 hairline-t">
             <p className="label mb-3">Requester</p>

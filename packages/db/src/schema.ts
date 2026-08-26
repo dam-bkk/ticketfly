@@ -94,6 +94,8 @@ export const tickets = pgTable(
     slaPausedSince: timestamp("sla_paused_since", { withTimezone: true }),
     slaPausedMinutes: integer("sla_paused_minutes").notNull().default(0),
     satisfaction: integer("satisfaction"),
+    problemId: integer("problem_id"),
+    changeId: integer("change_id"),
     raw: jsonb("raw"),
     search: tsvector("search").generatedAlwaysAs(
       (): SQL => sql`setweight(to_tsvector('english', coalesce(${tickets.subject}, '')), 'A') || setweight(to_tsvector('english', coalesce(${tickets.description}, '')), 'B') || setweight(to_tsvector('simple', coalesce(${tickets.legacyRef}, '')), 'A')`,
@@ -392,3 +394,172 @@ export const assetAssignments = pgTable(
   },
   (t) => [index("asset_assignments_asset_idx").on(t.assetId)],
 );
+
+// ---------- ITIL modules (Problems, Changes, Releases, Tasks) ----------
+export const problemStatus = pgEnum("problem_status", ["open", "known_error", "resolved", "closed"]);
+export const changeType = pgEnum("change_type", ["standard", "normal", "emergency"]);
+export const changeStatus = pgEnum("change_status", ["open", "planning", "awaiting_approval", "approved", "in_progress", "completed", "rolled_back", "closed"]);
+export const riskLevel = pgEnum("risk_level", ["low", "medium", "high"]);
+export const taskStatus = pgEnum("task_status", ["open", "in_progress", "done"]);
+
+export const problems = pgTable("problems", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  status: problemStatus("status").notNull().default("open"),
+  priority: ticketPriority("priority").notNull().default("medium"),
+  impact: riskLevel("impact").notNull().default("medium"),
+  assigneeId: integer("assignee_id"),
+  groupId: integer("group_id"),
+  categoryId: integer("category_id"),
+  rootCause: text("root_cause"),
+  workaround: text("workaround"),
+  permanentFix: text("permanent_fix"),
+  changeId: integer("change_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+});
+
+export const problemIncidents = pgTable(
+  "problem_incidents",
+  { problemId: integer("problem_id").notNull(), ticketId: integer("ticket_id").notNull() },
+  (t) => [primaryKey({ columns: [t.problemId, t.ticketId] })],
+);
+
+export const changes = pgTable("changes", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  reason: text("reason"),
+  type: changeType("type").notNull().default("normal"),
+  status: changeStatus("status").notNull().default("open"),
+  risk: riskLevel("risk").notNull().default("medium"),
+  impact: riskLevel("impact").notNull().default("medium"),
+  priority: ticketPriority("priority").notNull().default("medium"),
+  requesterId: integer("requester_id").notNull(),
+  assigneeId: integer("assignee_id"),
+  groupId: integer("group_id"),
+  plannedStart: timestamp("planned_start", { withTimezone: true }),
+  plannedEnd: timestamp("planned_end", { withTimezone: true }),
+  rollbackPlan: text("rollback_plan"),
+  testPlan: text("test_plan"),
+  approvals: jsonb("approvals").$type<{ personId: number; name: string; decision: "pending" | "approved" | "rejected"; at?: string; note?: string }[]>().notNull().default([]),
+  affectedAssetIds: jsonb("affected_asset_ids").$type<number[]>().notNull().default([]),
+  releaseId: integer("release_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
+export const itReleases = pgTable("it_releases", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  status: text("status").notNull().default("planning"),
+  version: text("version"),
+  ownerId: integer("owner_id"),
+  plannedStart: timestamp("planned_start", { withTimezone: true }),
+  plannedEnd: timestamp("planned_end", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: serial("id").primaryKey(),
+    title: text("title").notNull(),
+    status: taskStatus("status").notNull().default("open"),
+    assigneeId: integer("assignee_id"),
+    groupId: integer("group_id"),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    parentType: text("parent_type").notNull(),
+    parentId: integer("parent_id").notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [index("tasks_parent_idx").on(t.parentType, t.parentId), index("tasks_assignee_idx").on(t.assigneeId)],
+);
+
+// ---------- IT Operations ----------
+export const alerts = pgTable("alerts", {
+  id: serial("id").primaryKey(),
+  source: text("source").notNull(),
+  severity: text("severity").notNull().default("medium"),
+  title: text("title").notNull(),
+  resource: text("resource"),
+  detail: text("detail"),
+  status: text("status").notNull().default("new"),
+  ticketId: integer("ticket_id"),
+  firedAt: timestamp("fired_at", { withTimezone: true }).notNull().defaultNow(),
+  acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+});
+
+export const itServices = pgTable("it_services", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  health: text("health").notNull().default("operational"),
+  ownerId: integer("owner_id"),
+  maintenanceFrom: timestamp("maintenance_from", { withTimezone: true }),
+  maintenanceTo: timestamp("maintenance_to", { withTimezone: true }),
+  maintenanceNote: text("maintenance_note"),
+});
+
+// ---------- Projects (grid-first) ----------
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("active"),
+  ownerId: integer("owner_id"),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  workspace: text("workspace").notNull().default("it"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const projectRows = pgTable(
+  "project_rows",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id").notNull(),
+    position: integer("position").notNull().default(0),
+    parentId: integer("parent_id"),
+    title: text("title").notNull().default(""),
+    status: text("status").notNull().default("not_started"),
+    ownerId: integer("owner_id"),
+    startDate: date("start_date"),
+    endDate: date("end_date"),
+    percent: integer("percent").notNull().default(0),
+    priority: text("priority").notNull().default("medium"),
+    notes: text("notes"),
+    ticketId: integer("ticket_id"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("project_rows_project_idx").on(t.projectId, t.position)],
+);
+
+// ---------- Notifications & preferences ----------
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: serial("id").primaryKey(),
+    personId: integer("person_id").notNull(),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    href: text("href"),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("notifications_person_idx").on(t.personId, t.readAt)],
+);
+
+export const userPrefs = pgTable("user_prefs", {
+  personId: integer("person_id").primaryKey(),
+  hiddenModules: jsonb("hidden_modules").$type<string[]>().notNull().default([]),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

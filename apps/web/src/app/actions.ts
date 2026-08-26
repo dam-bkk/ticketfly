@@ -152,3 +152,13 @@ export async function toggleOnboardingTask(onboardingId: number, key: string) {
   revalidatePath("/journeys/onboarding");
   revalidatePath(`/people/${o.personId}`);
 }
+
+/** Freshservice's "Mark ticket as closed": resolve then close in one step, both logged. */
+export async function closeTicket(ticketId: number) {
+  const me = await requireStaff();
+  const [t] = await db.select({ status: schema.tickets.status }).from(schema.tickets).where(eq(schema.tickets.id, ticketId)).limit(1);
+  if (!t || t.status === "closed") return;
+  if (t.status !== "resolved") await updateTicket(ticketId, { status: "resolved" });
+  await updateTicket(ticketId, { status: "closed" });
+  void me;
+}

@@ -65,7 +65,7 @@ export function pct(n: number): string {
 export const STATUS_LABEL: Record<string, string> = {
   open: "Open",
   pending: "Waiting on requester",
-  in_progress: "In progress",
+  in_progress: "Being processed",
   on_hold: "On hold",
   resolved: "Resolved",
   closed: "Closed",

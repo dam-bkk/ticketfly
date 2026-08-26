@@ -108,7 +108,7 @@ const NOTES = [
 ];
 
 async function truncate() {
-  await db.execute(sql`truncate table people, groups, group_members, categories, tickets, ticket_messages, activity_log, releases, assets, software, asset_software, services, onboardings, access_grants, sla_policies, system_jobs, saved_views, asset_assignments, workspaces, kb_folders, kb_articles, contracts, purchase_orders restart identity cascade`);
+  await db.execute(sql`truncate table people, groups, group_members, categories, tickets, ticket_messages, activity_log, releases, assets, software, asset_software, services, onboardings, access_grants, sla_policies, system_jobs, saved_views, asset_assignments, problems, problem_incidents, changes, it_releases, tasks, alerts, it_services, projects, project_rows, notifications, user_prefs, workspaces, kb_folders, kb_articles, contracts, purchase_orders restart identity cascade`);
 }
 
 async function main() {
@@ -669,12 +669,150 @@ async function main() {
     { number: "PO-2026-0470", vendor: "Adobe", status: "pending_approval", total: "1440", orderedAt: "2026-08-24", requesterId: byName("Priya Sharma").id, items: [{ name: "Acrobat Pro seat (annual)", qty: 6, unit: 240 }] },
   ]);
 
+
+  // ---------- Problems ----------
+  const openTickets = await db.select({ id: schema.tickets.id, subject: schema.tickets.subject, categoryId: schema.tickets.categoryId }).from(schema.tickets).where(sql`${schema.tickets.status} in ('open','in_progress','pending')`);
+  const byCat = (name: string, n: number) => openTickets.filter((t) => t.categoryId === cat(name)).slice(0, n).map((t) => t.id);
+  const problemRows = await db
+    .insert(schema.problems)
+    .values([
+      { title: "VPN drops for remote users after Cisco Secure Client 5.1.9", description: "Multiple users report the tunnel dropping every 20–40 minutes since the client auto-updated. Reproducible on Windows 11 24H2 with Wi-Fi 6E adapters.", status: "known_error", priority: "high", impact: "high", assigneeId: byName("Daniel Lim").id, groupId: gid("Network & Infrastructure"), categoryId: cat("Network"), rootCause: "DTLS keepalive regression in 5.1.9 when the adapter enters power-save.", workaround: "Disable adapter power management, or pin client 5.1.6 via Intune ring 'Stable'.", createdAt: daysAgo(9), updatedAt: hoursAgo(5) },
+      { title: "Outlook repeatedly prompts for credentials on shared mailboxes", description: "Users with 3+ shared mailboxes get modern-auth prompts every few hours.", status: "open", priority: "medium", impact: "medium", assigneeId: byName("Priya Sharma").id, groupId: gid("Service Desk"), categoryId: cat("Email & Collaboration"), workaround: "Remove and re-add the shared mailbox; clear Credential Manager entries.", createdAt: daysAgo(14), updatedAt: daysAgo(1) },
+      { title: "Printer 12/F offline after firmware update", description: "HP MFP on 12/F loses network after the vendor's July firmware; recurs after every restart.", status: "resolved", priority: "medium", impact: "low", assigneeId: byName("Wei Chen").id, groupId: gid("Service Desk"), categoryId: cat("Printing"), rootCause: "Firmware enabled IPv6-only discovery; DHCPv6 not offered on that VLAN.", permanentFix: "Static IPv4 + firmware rollback; vendor case open.", createdAt: daysAgo(40), updatedAt: daysAgo(6), resolvedAt: daysAgo(6) },
+      { title: "Adobe Acrobat licence expired message for named users", description: "Named-user licences show as expired despite active seats in the admin console.", status: "open", priority: "low", impact: "low", assigneeId: byName("Siti Abdullah").id, groupId: gid("Identity & Access"), categoryId: cat("Licences"), createdAt: daysAgo(3), updatedAt: hoursAgo(20) },
+    ])
+    .returning({ id: schema.problems.id });
+  const pi: (typeof schema.problemIncidents.$inferInsert)[] = [];
+  [["Network", 4], ["Email & Collaboration", 3], ["Printing", 2], ["Licences", 2]].forEach(([c, n], i) => byCat(c as string, n as number).forEach((tid) => pi.push({ problemId: problemRows[i]!.id, ticketId: tid })));
+  if (pi.length) await db.insert(schema.problemIncidents).values(pi);
+  for (const link of pi) await db.update(schema.tickets).set({ problemId: link.problemId }).where(sql`id = ${link.ticketId}`);
+
+  // ---------- Changes & releases ----------
+  const approvers = (names: string[], decision: "pending" | "approved" | "rejected" = "pending") => names.map((n) => ({ personId: byName(n).id, name: n, decision, ...(decision !== "pending" ? { at: daysAgo(1).toISOString() } : {}) }));
+  const rel = await db
+    .insert(schema.itReleases)
+    .values([
+      { name: "Windows 11 24H2 wave 2", description: "Second ring: Finance and Operations laptops.", status: "scheduled", version: "24H2", ownerId: byName("Marcus Tan").id, plannedStart: daysAgo(-10), plannedEnd: daysAgo(-3) },
+      { name: "Network refresh HK office", description: "Core switch replacement and Wi-Fi 6E APs on 12/F and 14/F.", status: "planning", ownerId: byName("Daniel Lim").id, plannedStart: daysAgo(-24), plannedEnd: daysAgo(-22) },
+      { name: "August patch Tuesday", description: "Monthly OS and Office updates.", status: "deployed", ownerId: byName("Marcus Tan").id, plannedStart: daysAgo(13), plannedEnd: daysAgo(12) },
+    ])
+    .returning({ id: schema.itReleases.id });
+  const changeRows = await db
+    .insert(schema.changes)
+    .values([
+      { title: "VPN gateway firmware upgrade", description: "Upgrade both HK ASA gateways to 9.20.3 during the Saturday window.", reason: "Vendor fix for DTLS keepalive regression (PRB VPN drops).", type: "normal", status: "awaiting_approval", risk: "medium", impact: "high", priority: "high", requesterId: byName("Daniel Lim").id, assigneeId: byName("Daniel Lim").id, groupId: gid("Network & Infrastructure"), plannedStart: new Date("2026-08-30T22:00:00+08:00"), plannedEnd: new Date("2026-08-31T01:00:00+08:00"), rollbackPlan: "Boot previous image from flash; 15 min.", testPlan: "Tunnel from HK, KL and Dubai; 30-minute soak.", approvals: approvers(["Nada Haddad", "Ked Mardemootoo"]), createdAt: daysAgo(5), updatedAt: hoursAgo(8) },
+      { title: "Pin Cisco Secure Client 5.1.6 via Intune ring Stable", description: "Roll back the client on all managed Windows laptops until the gateway fix lands.", type: "standard", status: "in_progress", risk: "low", impact: "medium", priority: "high", requesterId: byName("Daniel Lim").id, assigneeId: byName("Marcus Tan").id, groupId: gid("Endpoint & Devices"), plannedStart: daysAgo(2), plannedEnd: daysAgo(-1), rollbackPlan: "Remove the assignment; clients self-update.", approvals: [], affectedAssetIds: [], createdAt: daysAgo(3), updatedAt: hoursAgo(3) },
+      { title: "Enable Windows Hello for Business for Finance", description: "Policy rollout to the Finance dynamic group; 60 devices.", type: "normal", status: "approved", risk: "low", impact: "medium", priority: "medium", requesterId: byName("Siti Abdullah").id, assigneeId: byName("Marcus Tan").id, groupId: gid("Endpoint & Devices"), plannedStart: daysAgo(-4), plannedEnd: daysAgo(-4), approvals: approvers(["Nada Haddad"], "approved"), releaseId: rel[0]!.id, createdAt: daysAgo(8), updatedAt: daysAgo(1) },
+      { title: "Emergency: revoke compromised service account", description: "Defender flagged credential theft on svc-backup; rotate and re-scope.", type: "emergency", status: "completed", risk: "high", impact: "high", priority: "urgent", requesterId: byName("Ked Mardemootoo").id, assigneeId: byName("Siti Abdullah").id, groupId: gid("Identity & Access"), plannedStart: daysAgo(6, 2), plannedEnd: daysAgo(6), approvals: approvers(["Nada Haddad"], "approved"), createdAt: daysAgo(6, 3), updatedAt: daysAgo(6), completedAt: daysAgo(6) },
+      { title: "Replace core switch HK 12/F", description: "Swap Catalyst 9300 stack; requires floor outage.", type: "normal", status: "planning", risk: "high", impact: "high", priority: "medium", requesterId: byName("Daniel Lim").id, assigneeId: byName("Daniel Lim").id, groupId: gid("Network & Infrastructure"), plannedStart: daysAgo(-24), plannedEnd: daysAgo(-24, -6), rollbackPlan: "Re-rack old stack; config backup on TFTP.", approvals: [], releaseId: rel[1]!.id, createdAt: daysAgo(2), updatedAt: hoursAgo(30) },
+      { title: "August patch Tuesday deployment", description: "Ring 0 → 1 → 2 over 5 days.", type: "standard", status: "closed", risk: "low", impact: "medium", priority: "medium", requesterId: byName("Marcus Tan").id, assigneeId: byName("Marcus Tan").id, groupId: gid("Endpoint & Devices"), plannedStart: daysAgo(13), plannedEnd: daysAgo(8), approvals: [], releaseId: rel[2]!.id, createdAt: daysAgo(15), updatedAt: daysAgo(8), completedAt: daysAgo(8) },
+    ])
+    .returning({ id: schema.changes.id });
+  await db.update(schema.problems).set({ changeId: changeRows[0]!.id }).where(sql`id = ${problemRows[0]!.id}`);
+
+  // ---------- Tasks ----------
+  const taskRows: (typeof schema.tasks.$inferInsert)[] = [
+    { title: "Confirm outage window with Finance leads", status: "done", assigneeId: byName("Daniel Lim").id, parentType: "change", parentId: changeRows[0]!.id, dueAt: daysAgo(1), completedAt: daysAgo(1) },
+    { title: "Stage 9.20.3 image on both gateways", status: "in_progress", assigneeId: byName("Daniel Lim").id, parentType: "change", parentId: changeRows[0]!.id, dueAt: daysAgo(-2) },
+    { title: "Post maintenance notice on status page", status: "open", assigneeId: byName("Wei Chen").id, parentType: "change", parentId: changeRows[0]!.id, dueAt: daysAgo(-3) },
+    { title: "Collect adapter models from affected users", status: "done", assigneeId: byName("Priya Sharma").id, parentType: "problem", parentId: problemRows[0]!.id, dueAt: daysAgo(4), completedAt: daysAgo(5) },
+    { title: "Raise vendor case with Cisco TAC", status: "done", assigneeId: byName("Daniel Lim").id, parentType: "problem", parentId: problemRows[0]!.id, dueAt: daysAgo(6), completedAt: daysAgo(7) },
+    { title: "Reproduce credential prompt with 3 shared mailboxes", status: "open", assigneeId: byName("Priya Sharma").id, parentType: "problem", parentId: problemRows[1]!.id, dueAt: daysAgo(-1) },
+    { title: "Order 2× Catalyst 9300 (PO)", status: "in_progress", assigneeId: byName("Daniel Lim").id, parentType: "change", parentId: changeRows[4]!.id, dueAt: daysAgo(-5) },
+    { title: "Ship MacBook to Dubai (Elena Petrova)", status: "open", assigneeId: byName("Marcus Tan").id, parentType: "journey", parentId: 1, dueAt: daysAgo(-3) },
+    { title: "Assign Adobe Acrobat licence (Kai Ho)", status: "open", assigneeId: byName("Siti Abdullah").id, parentType: "journey", parentId: 2, dueAt: daysAgo(-2) },
+    { title: "Collect laptop and badge (Tomas Novak)", status: "open", assigneeId: byName("Marcus Tan").id, parentType: "journey", parentId: 4, dueAt: daysAgo(-3) },
+    { title: "Chase Zoom renewal quote", status: "open", assigneeId: byName("Priya Sharma").id, parentType: "ticket", parentId: inserted[220]!.id, dueAt: daysAgo(-4) },
+    { title: "Call back requester about docking station", status: "open", assigneeId: byName("Wei Chen").id, parentType: "ticket", parentId: inserted[230]!.id, dueAt: hoursAgo(-3) },
+    { title: "Wipe returned iPhone before restock", status: "open", assigneeId: byName("Marcus Tan").id, parentType: "ticket", parentId: inserted[240]!.id, dueAt: daysAgo(1) },
+  ];
+  await db.insert(schema.tasks).values(taskRows);
+
+  // ---------- IT Operations ----------
+  await db.insert(schema.alerts).values([
+    { source: "defender", severity: "high", title: "Credential theft attempt — svc-backup", resource: "HK-DC-FS01", detail: "LSASS memory access from unsigned binary. Device isolated automatically.", status: "resolved", firedAt: daysAgo(6, 4), acknowledgedAt: daysAgo(6, 3.5), resolvedAt: daysAgo(6) },
+    { source: "azure_monitor", severity: "medium", title: "VPN gateway CPU > 85% for 15 min", resource: "hk-asa-01", detail: "Sustained CPU during peak login window.", status: "acknowledged", firedAt: hoursAgo(6), acknowledgedAt: hoursAgo(5.5) },
+    { source: "defender", severity: "medium", title: "Unlicensed remote-access tool detected", resource: "QIKLNB-PF3D366K", detail: "TeamViewer 15.68.5 installed by user. Policy: block.", status: "new", firedAt: hoursAgo(2) },
+    { source: "intune", severity: "low", title: "12 devices non-compliant: BitLocker off", resource: "Compliance policy — Windows baseline", detail: "Devices outside grace period.", status: "new", firedAt: hoursAgo(9) },
+    { source: "azure_monitor", severity: "high", title: "File server disk 92% — HK-DC-FS01 D:", resource: "HK-DC-FS01", detail: "Growth 4 GB/day; 6 days to full.", status: "new", firedAt: hoursAgo(1) },
+    { source: "defender", severity: "low", title: "Phishing campaign: 14 recipients in Finance", resource: "Exchange Online", detail: "Subject 'Invoice overdue — action required'. Zero-hour purge applied.", status: "resolved", firedAt: daysAgo(2), acknowledgedAt: daysAgo(2), resolvedAt: daysAgo(2) },
+  ]);
+  await db.insert(schema.itServices).values([
+    { name: "Email & calendar (Microsoft 365)", health: "operational", ownerId: byName("Priya Sharma").id },
+    { name: "VPN (Cisco Secure Client)", health: "degraded", ownerId: byName("Daniel Lim").id, maintenanceFrom: new Date("2026-08-30T22:00:00+08:00"), maintenanceTo: new Date("2026-08-31T01:00:00+08:00"), maintenanceNote: "Gateway firmware upgrade — connections will drop briefly." },
+    { name: "Office Wi-Fi (HK, KL, SG)", health: "operational", ownerId: byName("Daniel Lim").id },
+    { name: "Salesforce", health: "operational", ownerId: byName("Nada Haddad").id },
+    { name: "File shares (HK-DC-FS01)", health: "operational", ownerId: byName("Ked Mardemootoo").id },
+    { name: "Printing", health: "operational", ownerId: byName("Wei Chen").id },
+    { name: "Service Desk (this portal)", health: "operational", ownerId: byName("Damien Fleury").id },
+  ]);
+
+  // ---------- Projects (grid) ----------
+  const proj = await db
+    .insert(schema.projects)
+    .values([
+      { name: "Freshservice → Service Desk migration", description: "Cutover plan, data import, training, decommission.", status: "active", ownerId: byName("Nada Haddad").id, startDate: "2026-08-01", endDate: "2026-11-30" },
+      { name: "HK office network refresh", description: "Core switches, Wi-Fi 6E, new SD-WAN.", status: "active", ownerId: byName("Daniel Lim").id, startDate: "2026-09-01", endDate: "2026-10-15" },
+      { name: "QVI ticket tracker (from Smartsheet)", description: "Pilot: QVI's request tracking on the grid, replacing their Smartsheet.", status: "planning", ownerId: byName("Damien Fleury").id, startDate: "2026-10-01", endDate: "2026-12-15", workspace: "qvi" },
+    ])
+    .returning({ id: schema.projects.id });
+  const rows1: [string, string, string, string, string, number, number | null][] = [
+    ["Discovery & sizing", "done", "Damien Fleury", "2026-08-01", "2026-08-15", 100, null],
+    ["Architecture brief signed off", "done", "Nada Haddad", "2026-08-20", "2026-08-26", 100, 0],
+    ["Freshservice export", "in_progress", "Damien Fleury", "2026-08-27", "2026-09-05", 40, null],
+    ["Obtain API key + plan tier", "done", "Ked Mardemootoo", "2026-08-27", "2026-08-28", 100, 2],
+    ["Crawl tickets + conversations", "in_progress", "Damien Fleury", "2026-08-29", "2026-09-03", 30, 2],
+    ["Attachments to Blob", "not_started", "Damien Fleury", "2026-09-03", "2026-09-05", 0, 2],
+    ["Reconcile counts vs CSV export", "not_started", "Wei Chen", "2026-09-05", "2026-09-05", 0, 2],
+    ["Azure environment", "in_progress", "Ked Mardemootoo", "2026-09-01", "2026-09-12", 20, null],
+    ["Resource group + Postgres", "in_progress", "Ked Mardemootoo", "2026-09-01", "2026-09-04", 50, 7],
+    ["Entra app registrations", "not_started", "Ked Mardemootoo", "2026-09-04", "2026-09-08", 0, 7],
+    ["ADO pipeline (WIF)", "not_started", "Damien Fleury", "2026-09-08", "2026-09-12", 0, 7],
+    ["Agent training", "not_started", "Nada Haddad", "2026-10-06", "2026-10-10", 0, null],
+    ["Cutover weekend", "not_started", "Nada Haddad", "2026-10-17", "2026-10-19", 0, null],
+    ["Decommission Freshservice", "not_started", "Ked Mardemootoo", "2026-11-30", "2026-11-30", 0, null],
+  ];
+  const rows2: [string, string, string, string, string, number, number | null][] = [
+    ["Site survey 12/F + 14/F", "done", "Daniel Lim", "2026-09-01", "2026-09-03", 100, null],
+    ["Order switches (PO)", "in_progress", "Daniel Lim", "2026-09-02", "2026-09-10", 60, null],
+    ["Change request + CAB", "not_started", "Daniel Lim", "2026-09-12", "2026-09-16", 0, null],
+    ["Cutover night", "not_started", "Daniel Lim", "2026-09-20", "2026-09-20", 0, null],
+    ["AP install 14/F", "not_started", "Marcus Tan", "2026-09-22", "2026-09-26", 0, null],
+    ["Post-change review", "not_started", "Nada Haddad", "2026-10-01", "2026-10-01", 0, null],
+  ];
+  const rows3: [string, string, string, string, string, number, number | null][] = [
+    ["Map Smartsheet columns → grid", "in_progress", "Damien Fleury", "2026-10-01", "2026-10-03", 20, null],
+    ["Import current sheet", "not_started", "Damien Fleury", "2026-10-06", "2026-10-07", 0, null],
+    ["QVI walkthrough", "not_started", "Nada Haddad", "2026-10-10", "2026-10-10", 0, null],
+  ];
+  for (const [pIdx, rows] of [[0, rows1], [1, rows2], [2, rows3]] as const) {
+    const ids: number[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const [title, status, owner, start, end, pct, parentIdx] = rows[i]!;
+      const [r] = await db.insert(schema.projectRows).values({ projectId: proj[pIdx]!.id, position: i, parentId: parentIdx === null ? null : ids[parentIdx] ?? null, title, status, ownerId: byName(owner).id, startDate: start, endDate: end, percent: pct, priority: pct === 100 ? "low" : i % 3 === 0 ? "high" : "medium" }).returning({ id: schema.projectRows.id });
+      ids.push(r!.id);
+    }
+  }
+
+  // ---------- Notifications ----------
+  const wei = byName("Wei Chen").id;
+  await db.insert(schema.notifications).values([
+    { personId: wei, kind: "assignment", title: "Ticket assigned to you", body: "Slow performance after Windows update — Yuki Lim", href: `/tickets/${inserted[250]!.id}`, createdAt: hoursAgo(1) },
+    { personId: wei, kind: "sla", title: "First response due in 30 min", body: "Access to Finance shared drive", href: `/tickets/${inserted[251]!.id}`, createdAt: hoursAgo(2) },
+    { personId: wei, kind: "task", title: "Task due today", body: "Post maintenance notice on status page", href: "/tasks", createdAt: hoursAgo(4) },
+    { personId: wei, kind: "mention", title: "Priya mentioned you", body: "\"@Wei can you take the printer one on 12/F?\"", href: "/tickets", readAt: hoursAgo(20), createdAt: hoursAgo(22) },
+    { personId: wei, kind: "release", title: "Service Desk 0.3.0 deployed", body: "Modules: Problems, Changes, Releases, Tasks, IT Ops, Projects, Reporting", href: "/admin/releases", readAt: daysAgo(1), createdAt: daysAgo(1) },
+    { personId: byName("Nada Haddad").id, kind: "approval", title: "Approval requested", body: "VPN gateway firmware upgrade — Saturday 22:00", href: `/changes/${changeRows[0]!.id}`, createdAt: hoursAgo(8) },
+    { personId: byName("Ked Mardemootoo").id, kind: "approval", title: "Approval requested", body: "VPN gateway firmware upgrade — Saturday 22:00", href: `/changes/${changeRows[0]!.id}`, createdAt: hoursAgo(8) },
+  ]);
+
   // ---------- Releases ----------
   await db.insert(schema.releases).values([
     { version: "0.1.0", bump: "minor", environment: "dev", commitSha: "a41f2c9", releasedAt: daysAgo(12), notes: "Foundation: schema, activity log, release tracking, pipeline gate.", changes: [{ type: "feat", scope: "core", subject: "SLA business-hours clock" }, { type: "feat", scope: "db", subject: "ticket, people, asset schema" }, { type: "chore", scope: "ci", subject: "lint → test → build → deploy" }] },
     { version: "0.2.0", bump: "minor", environment: "dev", commitSha: "b73e01d", releasedAt: daysAgo(8), notes: "Freshservice import with legacy references and /fs redirects.", changes: [{ type: "feat", scope: "import", subject: "Freshservice crawler with resumable checkpoints" }, { type: "feat", scope: "tickets", subject: "legacy_ref lookup and redirect" }, { type: "fix", scope: "import", subject: "attachment URLs expire — download during crawl" }] },
     { version: "0.2.1", bump: "patch", environment: "dev", commitSha: "c9a77b2", releasedAt: daysAgo(6), notes: "Import fidelity fixes.", changes: [{ type: "fix", scope: "import", subject: "conversation pagination beyond 30 notes" }, { type: "perf", scope: "search", subject: "GIN index on legacy refs" }] },
     { version: "0.3.0", bump: "minor", environment: "dev", commitSha: "d12ff40", releasedAt: daysAgo(3), notes: "Agent inbox, ticket view, requester portal.", changes: [{ type: "feat", scope: "inbox", subject: "queue with saved views and keyboard navigation" }, { type: "feat", scope: "portal", subject: "service catalogue and request tracking" }, { type: "feat", scope: "settings", subject: "activity log, releases, status" }] },
+    { version: "0.3.0", bump: "minor", environment: "dev", commitSha: "f0a12c4", releasedAt: hoursAgo(21), notes: "All modules live: Problems, Changes, Releases, Tasks, IT Operations, Projects grid, Reporting, Notifications.", changes: [{ type: "feat", scope: "problems", subject: "known-error records linked to incidents" }, { type: "feat", scope: "changes", subject: "approvals, calendar, releases" }, { type: "feat", scope: "projects", subject: "Smartsheet-style grid with inline editing" }, { type: "feat", scope: "reporting", subject: "analytics + SLA performance" }] },
     { version: "0.3.1", bump: "patch", environment: "dev", commitSha: "e5b3a19", releasedAt: hoursAgo(20), notes: "Polish.", changes: [{ type: "fix", scope: "inbox", subject: "SLA chip colour on paused tickets" }, { type: "fix", scope: "portal", subject: "date picker time zone" }] },
   ]);
 
