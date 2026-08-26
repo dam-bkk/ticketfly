@@ -7,7 +7,7 @@
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts", "./schema": "./src/schema.ts" },
   "scripts": {
-    "push": "drizzle-kit push",
+    "push": "drizzle-kit push --force",
     "seed": "tsx src/seed.ts",
     "typecheck": "tsc --noEmit"
   },
