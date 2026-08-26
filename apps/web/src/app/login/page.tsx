@@ -20,7 +20,7 @@ export default async function Login() {
       <section className="relative hidden overflow-hidden bg-ink text-canvas lg:block dark:bg-surface">
         <FlightField />
         <div className="relative flex h-full flex-col justify-between p-12">
-          <Logo className="[&_span]:text-canvas dark:[&_span]:text-ink" />
+          <Logo plate className="[&>span:last-child]:text-canvas dark:[&>span:last-child]:text-ink" />
           <div className="max-w-md">
             <p className="text-[40px] font-semibold leading-[1.08] tracking-[-0.03em]">
               Every request, <span className="font-normal text-canvas/60 dark:text-ink-3">from hello to goodbye.</span>
