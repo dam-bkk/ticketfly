@@ -5,7 +5,8 @@ import { inboxCounts } from "@/lib/queries";
 import { getPrefs } from "@/lib/modules";
 import { workspaceContext } from "@/lib/workspace";
 import { Sidebar } from "@/components/shell/sidebar";
-import { ViewAsBanner } from "@/components/shell/view-as";
+import { ViewAsBar } from "@/components/shell/view-as";
+import { viewAsContext } from "@/lib/view-as";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireStaff();
@@ -17,13 +18,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     (select count(*) from tasks t where t.assignee_id = ${me.id} and t.status <> 'done' and t.due_at::date <= now()::date)::int as tasks,
     (select count(*) from alerts where status = 'new')::int as alerts`)) as unknown as { approvals: number; tasks: number; alerts: number }[];
   const prefs = await getPrefs(me.id);
+  const va = await viewAsContext(me);
   return (
     <div className="flex h-dvh overflow-hidden">
       <Sidebar me={me} counts={{ open: c.open, mine: c.mine, atRisk: c.atRisk, onboarding: ob?.n ?? 0, approvals: extra?.approvals, tasks: extra?.tasks, alerts: extra?.alerts }} version={APP_VERSION} hidden={prefs.hiddenModules} />
       <div className="flex min-w-0 flex-1 flex-col">
-        {me.actor && <ViewAsBanner viewing={{ displayName: me.displayName, role: me.role }} />}
         {children}
       </div>
+      {va && <ViewAsBar people={va.people} viewing={va.viewing} />}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { PersonaMenu } from "@/components/shell/persona-menu";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { PortalNav } from "./nav";
 import { viewAsContext } from "@/lib/view-as";
-import { ViewAs, ViewAsBanner } from "@/components/shell/view-as";
+import { ViewAsBar } from "@/components/shell/view-as";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const me = await requirePrincipal();
@@ -14,7 +14,6 @@ export default async function PortalLayout({ children }: { children: React.React
   const va = await viewAsContext(me);
   return (
     <div className="min-h-dvh bg-canvas">
-      {me.actor && <ViewAsBanner viewing={{ displayName: me.displayName, role: me.role }} />}
       <header className="sticky top-0 z-40 bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1080px] items-center gap-6 px-6">
           <Link href="/portal" className="rounded-md">
@@ -23,7 +22,6 @@ export default async function PortalLayout({ children }: { children: React.React
           <PortalNav />
           <div className="ml-auto flex items-center gap-3">
             <CommandPalette portal />
-            {va && <ViewAs people={va.people} viewing={va.viewing} compact />}
             {staff && (
               <Link href="/tickets" className="text-[12.5px] font-medium text-ink-3 hover:text-ink">
                 Back to IT workspace
@@ -41,6 +39,7 @@ export default async function PortalLayout({ children }: { children: React.React
       <footer className="mx-auto max-w-[1080px] px-6 pb-10 text-[12px] text-ink-4">
         IT QI Group · Service desk hours 09:00–18:00 HKT, Monday to Friday · Urgent security issues are handled 24 × 7
       </footer>
+      {va && <ViewAsBar people={va.people} viewing={va.viewing} />}
     </div>
   );
 }

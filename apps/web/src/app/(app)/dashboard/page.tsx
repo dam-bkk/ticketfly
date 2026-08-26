@@ -63,20 +63,20 @@ export default async function Dashboard() {
               const s = stats.find((x) => x.id === g.id);
               const short = TEAM_SHORT[g.name] ?? g.name;
               return (
-                <Link key={g.id} href={`/tickets?f=open&group=${g.id}`} className={cn("rounded-lg p-4 transition-shadow hover:shadow-2", TEAM_TONE[short] ?? "bg-surface-2 text-ink-2")}>
-                  <div className="flex items-start justify-between">
-                    <span className="text-[13px] font-semibold">{short} – Unresolved</span>
-                    {s && s.overdue > 0 ? <AlertTriangle className="size-4" /> : <CheckCircle2 className="size-4 opacity-60" />}
+                <Link key={g.id} href={`/tickets?f=open&group=${g.id}`} className={cn("grid grid-rows-[20px_1fr_16px] gap-2 rounded-lg p-4 transition-shadow hover:shadow-2", TEAM_TONE[short] ?? "bg-surface-2 text-ink-2")}>
+                  <div className="flex items-center justify-between">
+                    <span className="truncate text-[13px] font-semibold">{short}</span>
+                    {s && s.overdue > 0 ? <AlertTriangle className="size-4 shrink-0" /> : <CheckCircle2 className="size-4 shrink-0 opacity-60" />}
                   </div>
-                  <p className="tnum mt-3 text-[30px] font-semibold leading-none tracking-[-0.02em]">{s?.unresolved ?? 0}</p>
-                  <p className="mt-2 text-[11.5px] opacity-80">{s?.overdue ?? 0} overdue · {s?.unassigned ?? 0} unassigned</p>
+                  <p className="tnum self-end text-[30px] font-semibold leading-none tracking-[-0.02em]">{s?.unresolved ?? 0}<span className="ml-1.5 text-[11.5px] font-medium opacity-70">unresolved</span></p>
+                  <p className="text-[11.5px] opacity-80">{s?.overdue ?? 0} overdue · {s?.unassigned ?? 0} unassigned</p>
                 </Link>
               );
             })}
-            <Link href="/changes?f=approval" className="panel p-4 transition-shadow hover:shadow-2">
-              <span className="text-[13px] font-semibold">My Pending Approvals</span>
-              <p className="mt-0.5 text-[11.5px] text-ink-3">Changes, tickets &amp; post-incident reports</p>
-              <p className={cn("tnum mt-2 text-[30px] font-semibold leading-none tracking-[-0.02em]", approvals.length && "text-accent-ink")}>{approvals.length}</p>
+            <Link href="/changes?f=approval" className="panel grid grid-rows-[20px_1fr_16px] gap-2 p-4 transition-shadow hover:shadow-2">
+              <span className="truncate text-[13px] font-semibold">My Pending Approvals</span>
+              <p className={cn("tnum self-end text-[30px] font-semibold leading-none tracking-[-0.02em]", approvals.length && "text-accent-ink")}>{approvals.length}<span className="ml-1.5 text-[11.5px] font-medium text-ink-3">waiting</span></p>
+              <p className="text-[11.5px] text-ink-3">Changes, tickets &amp; post-incident reports</p>
             </Link>
           </div>
 
