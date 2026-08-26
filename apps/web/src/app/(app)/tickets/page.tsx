@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
 import { formatTicketRef } from "@ticketfly/core";
 import { requireStaff } from "@/lib/auth";
 import { inboxCounts, listInbox, type InboxFilter } from "@/lib/queries";
@@ -11,7 +10,7 @@ import { Empty } from "@/components/ui/empty";
 import { PriorityMark, SlaChip, StatusPill, Tag } from "@/components/ui/pills";
 import { InboxSearch } from "./search";
 
-export const metadata = { title: "Inbox" };
+export const metadata = { title: "Tickets" };
 
 const TABS: { key: InboxFilter; label: string }[] = [
   { key: "open", label: "All open" },
@@ -33,16 +32,16 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   return (
     <>
       <Topbar
-        crumbs={[{ label: "Inbox" }]}
+        crumbs={[{ label: "Tickets" }, { label: "List" }]}
         actions={
-          <ButtonLink href="/portal/new/report-issue" variant="primary" size="md">
-            <Plus className="size-3.5" /> New ticket
+          <ButtonLink href="/tickets/board" variant="secondary" size="md">
+            Board view
           </ButtonLink>
         }
       />
       <div className="flex h-11 shrink-0 items-center gap-1 bg-surface px-3 hairline-b">
         {TABS.map((t) => (
-          <Link key={t.key} href={`/inbox?f=${t.key}${sp.q ? `&q=${encodeURIComponent(sp.q)}` : ""}`} className={cn("flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink", filter === t.key && "bg-surface-2 text-ink")}>
+          <Link key={t.key} href={`/tickets?f=${t.key}${sp.q ? `&q=${encodeURIComponent(sp.q)}` : ""}`} className={cn("flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink", filter === t.key && "bg-surface-2 text-ink")}>
             {t.label}
             {countFor[t.key] !== undefined && <span className={cn("tnum text-[11px]", t.key === "at_risk" && countFor[t.key] ? "text-warn" : "text-ink-3")}>{countFor[t.key]}</span>}
           </Link>

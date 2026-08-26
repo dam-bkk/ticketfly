@@ -10,7 +10,7 @@ export function InboxSearch({ filter, q }: { filter: string; q: string }) {
   useEffect(() => setV(q), [q]);
   useEffect(() => {
     if (v === q) return;
-    const t = setTimeout(() => router.replace(`/inbox?f=${filter}${v ? `&q=${encodeURIComponent(v)}` : ""}`), 250);
+    const t = setTimeout(() => router.replace(`/tickets?f=${filter}${v ? `&q=${encodeURIComponent(v)}` : ""}`), 250);
     return () => clearTimeout(t);
   }, [v, q, filter, router]);
   return (

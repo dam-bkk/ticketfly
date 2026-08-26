@@ -7,7 +7,7 @@ const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "TicketFly", template: "%s · TicketFly" },
+  title: { default: "Service Desk", template: "%s · Service Desk" },
   description: "IT service platform for QI Group",
 };
 

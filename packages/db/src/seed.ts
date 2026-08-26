@@ -108,7 +108,7 @@ const NOTES = [
 ];
 
 async function truncate() {
-  await db.execute(sql`truncate table people, groups, group_members, categories, tickets, ticket_messages, activity_log, releases, assets, software, asset_software, services, onboardings, access_grants, sla_policies, system_jobs, saved_views restart identity cascade`);
+  await db.execute(sql`truncate table people, groups, group_members, categories, tickets, ticket_messages, activity_log, releases, assets, software, asset_software, services, onboardings, access_grants, sla_policies, system_jobs, saved_views, asset_assignments, workspaces, kb_folders, kb_articles, contracts, purchase_orders restart identity cascade`);
 }
 
 async function main() {
@@ -419,6 +419,17 @@ async function main() {
     "Cisco Secure Client": ["5.1.9", "5.1.6", "4.10.8"],
     "Java Runtime": ["8u451", "8u411", "17.0.12"],
     "Microsoft Defender for Endpoint": ["4.18.25070", "4.18.25060"],
+    "Microsoft Teams": ["25165.2003", "25122.1415", "24335.208"],
+    "Adobe Creative Cloud": ["6.5.0.532", "6.4.0.361"],
+    Figma: ["125.6.5", "124.4.4"],
+    "Zoom Workplace": ["6.5.3", "6.4.10", "6.3.1"],
+    Slack: ["4.45.64", "4.44.65"],
+    "Power BI Pro": ["2.145.1105", "2.144.878"],
+    "Visual Studio Code": ["1.103.1", "1.102.3"],
+    "7-Zip": ["24.09", "23.01"],
+    Notion: ["4.16.0", "4.15.1"],
+    TeamViewer: ["15.68.5", "15.64.4"],
+    Grammarly: ["1.5.98", "1.5.90"],
   };
   const MODELS = {
     laptop: [["MacBook Pro 14 (M4)", "macOS", "15.6"], ["MacBook Air 13 (M3)", "macOS", "15.5"], ["Dell Latitude 5450", "Windows", "11 24H2"], ["Lenovo ThinkPad X1 Carbon G12", "Windows", "11 24H2"], ["Surface Laptop 7", "Windows", "11 23H2"], ["Dell Latitude 5420", "Windows", "10 22H2"]],
@@ -458,10 +469,31 @@ async function main() {
       encrypted: !old || chance(0.5),
       purchaseDate: `202${between(2, 6)}-${String(between(1, 12)).padStart(2, "0")}-01`,
       cost: String(type === "laptop" ? between(1400, 2600) : between(900, 1600)),
+      impact: pick(["low", "low", "medium", "high"]),
+      usageType: chance(0.9) ? "permanent" : "loaner",
+      department: p.department,
+      managedById: byName(pick(["Marcus Tan", "Wei Chen", "Priya Sharma"])).id,
+      managedByGroupId: gid("Endpoint & Devices"),
+      assignedOn: daysAgo(between(30, 900)),
+      endOfLife: old ? "2026-12-31" : null,
+      vendor: m[0]!.startsWith("Mac") ? "Apple" : m[0]!.startsWith("Dell") ? "Dell" : m[0]!.startsWith("Lenovo") ? "Lenovo" : "Microsoft",
+      warrantyExpiry: `202${between(6, 8)}-${String(between(1, 12)).padStart(2, "0")}-15`,
+      domain: m[1] === "Windows" ? "QIGROUP" : "WORKGROUP",
+      hostname: `${type === "laptop" ? "QI" : "DT"}${city.slice(0, 2).toUpperCase()}NB-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+      memoryGb: String(pick([8, 16, 16, 32])),
+      diskGb: String(pick([256, 512, 512, 1024])),
+      cpuGhz: String(pick([1.8, 2.4, 3.2, 3.5])),
+      cpuCores: pick([4, 8, 8, 10, 12]),
+      macAddress: Array.from({ length: 6 }, () => between(16, 255).toString(16).toUpperCase().padStart(2, "0")).join(":"),
+      ipAddress: `10.${between(1, 3)}.${between(0, 255)}.${between(2, 254)}`,
+      lastLoginBy: `${p.displayName.toLowerCase().replace(/\s+/g, ".")}@qigroup.com`,
+      acknowledgedAt: chance(0.88) ? daysAgo(between(20, 800)) : null,
+      createdAt: daysAgo(between(200, 1200)),
+      updatedAt: hoursAgo(between(1, 72)),
     });
     if (chance(0.55)) {
       const mm = pick(MODELS.mobile);
-      assetRows.push({ assetTag: `QI-MB-${String(tagNo++).padStart(4, "0")}`, name: `${p.displayName.split(" ")[0]}'s ${mm[0]}`, type: "mobile", model: mm[0], serial: `IMEI${between(100000000, 999999999)}`, os: mm[1], osVersion: mm[2], ownerId: p.id, status: "in_use", compliance: chance(0.9) ? "compliant" : "unknown", source: "intune", lastSeenAt: hoursAgo(between(0, 48)), lastSeenCity: seenCity, lastSeenCountry: CITY_COUNTRY[seenCity] ?? "HK", encrypted: true, purchaseDate: `202${between(3, 6)}-05-01`, cost: String(between(700, 1400)) });
+      assetRows.push({ assetTag: `QI-MB-${String(tagNo++).padStart(4, "0")}`, name: `${p.displayName.split(" ")[0]}'s ${mm[0]}`, type: "mobile", model: mm[0], serial: `IMEI${between(100000000, 999999999)}`, os: mm[1], osVersion: mm[2], ownerId: p.id, status: "in_use", compliance: chance(0.9) ? "compliant" : "unknown", source: "intune", lastSeenAt: hoursAgo(between(0, 48)), lastSeenCity: seenCity, lastSeenCountry: CITY_COUNTRY[seenCity] ?? "HK", encrypted: true, purchaseDate: `202${between(3, 6)}-05-01`, cost: String(between(700, 1400)), department: p.department, managedById: byName("Marcus Tan").id, managedByGroupId: gid("Endpoint & Devices"), assignedOn: daysAgo(between(30, 700)), acknowledgedAt: chance(0.85) ? daysAgo(between(20, 600)) : null, vendor: mm[0]!.startsWith("iPhone") ? "Apple" : "Samsung" });
     }
   }
   for (let i = 0; i < 14; i++) {
@@ -474,6 +506,18 @@ async function main() {
   }
   assetRows.push({ assetTag: "QI-SV-0001", name: "HK-DC-FS01", type: "server", model: MODELS.server[0][0], serial: "HPE-8821", os: "Windows Server", osVersion: "2022", status: "in_use", compliance: "compliant", source: "defender", lastSeenAt: hoursAgo(0), lastSeenCity: "Hong Kong", lastSeenCountry: "HK", lastSeenIp: "10.10.0.21", encrypted: true, purchaseDate: "2023-01-15", cost: "14200" });
   const insertedAssets = await db.insert(schema.assets).values(assetRows).returning({ id: schema.assets.id, type: schema.assets.type, os: schema.assets.os });
+  // Assignment history: current assignment per owned device, plus one "returned but still assigned" edge case.
+  const fullAssets = await db.select({ id: schema.assets.id, ownerId: schema.assets.ownerId, assignedOn: schema.assets.assignedOn, acknowledgedAt: schema.assets.acknowledgedAt, type: schema.assets.type }).from(schema.assets);
+  const assignRows: (typeof schema.assetAssignments.$inferInsert)[] = [];
+  for (const a of fullAssets) {
+    if (!a.ownerId) continue;
+    if (chance(0.3)) assignRows.push({ assetId: a.id, personId: pick(requesters).id, assignedAt: daysAgo(between(900, 1400)), acknowledgedAt: daysAgo(between(899, 1399)), returnedAt: daysAgo(between(400, 899)), note: "Returned on role change" });
+    assignRows.push({ assetId: a.id, personId: a.ownerId, assignedAt: a.assignedOn ?? daysAgo(100), acknowledgedAt: a.acknowledgedAt });
+  }
+  await db.insert(schema.assetAssignments).values(assignRows);
+  // Edge case for the portal: a device the requester already returned that IT has not yet unassigned.
+  const returnedCandidate = fullAssets.find((a) => a.type === "mobile" && a.ownerId === requesters[0]?.id) ?? fullAssets.find((a) => a.type === "mobile" && a.ownerId);
+  if (returnedCandidate) await db.update(schema.assets).set({ returnedAt: daysAgo(4), status: "in_use" }).where(sql`id = ${returnedCandidate.id}`);
   const asRows: (typeof schema.assetSoftware.$inferInsert)[] = [];
   for (const a of insertedAssets) {
     if (a.type !== "laptop" && a.type !== "desktop") continue;
@@ -483,7 +527,7 @@ async function main() {
     for (const n of names) {
       const s = sw(n);
       const vs = versionsFor[n] ?? ["1.0"];
-      asRows.push({ assetId: a.id, softwareId: s.id, version: pick(vs), detectedAt: hoursAgo(between(1, 72)) });
+      asRows.push({ assetId: a.id, softwareId: s.id, version: pick(vs), status: s.licenceModel === "unlicensed" ? "in_review" : chance(0.15) ? "ignored" : chance(0.5) ? "managed" : "in_review", detectedAt: hoursAgo(between(1, 72)) });
     }
   }
   await db.insert(schema.assetSoftware).values(asRows);
@@ -560,6 +604,70 @@ async function main() {
     for (const g of chosen) grantRows.push({ personId: p.id, system: g[0], displayName: g[1], internalName: g[2], monthlyCost: g[3], grantedAt: daysAgo(between(30, 900)) });
   }
   await db.insert(schema.accessGrants).values(grantRows);
+
+
+  // ---------- Workspaces (Freshservice parity) ----------
+  await db.insert(schema.workspaces).values([
+    { name: "IT Division", slug: "it", primary: true, icon: "monitor" },
+    { name: "Finance", slug: "finance", icon: "banknote" },
+    { name: "Project Work Request", slug: "pwr", icon: "kanban" },
+    { name: "Global Operation", slug: "globalops", icon: "globe" },
+    { name: "Strategic Initiatives Portal", slug: "sip", icon: "shield" },
+  ]);
+
+  // ---------- Solutions (knowledge base) ----------
+  const folderSpec: [string, string][] = [
+    ["Getting Started", "Onboarding / Offboarding"], ["Getting Started", "Our Offices"], ["End User Guides", "Microsoft"], ["End User Guides", "FAQ"], ["End User Guides", "Employee Mobilephone support"],
+    ["Technical User Guides (How?)", "Desk Phone"], ["Technical User Guides (How?)", "Asset Management"], ["Technical Troubleshooting (Why?)", "Solutions"], ["Microsoft 365 Defender", "Security Operation"], ["Microsoft Intune Manager", "Device Management"],
+    ["Runbook", "IT Division Escalation Point"], ["Authentication Method", "Global Secure Access"], ["Finance Application", "Esker"], ["Finance Application", "COMPLAN"], ["Apps Knowledge Hub", "Customer Facing Concerns"],
+  ];
+  const folders = await db.insert(schema.kbFolders).values(folderSpec.map(([category, name]) => ({ category, name }))).returning();
+  const fid = (n: string) => folders.find((f) => f.name === n)!.id;
+  const authors = ["Wei Chen", "Priya Sharma", "Marcus Tan", "Siti Abdullah", "Daniel Lim", "Nada Haddad"].map(byName);
+  const articleSpec: [string, string, string][] = [
+    ["IP Phone - HitchOn Yealink SIP-T33G Full user manual", "Desk Phone", "published"], ["Wireless ScreenCastingKit WPD-900 Guide", "FAQ", "published"], ["360AI WebcamSpeakerPhone JVU368 Guide", "FAQ", "published"], ["Mobile Device Troubleshooting", "FAQ", "published"],
+    ["Basic Troubleshooting for Your Mobile Device (Android & iOS)", "Employee Mobilephone support", "published"], ["UBS Installation & Configuration (End User View)", "Esker", "published"], ["Laptop & Desktop Assessment Guide", "Asset Management", "published"], ["How to Recall an Email in Microsoft Outlook 365", "Microsoft", "published"],
+    ["Guide to MAP Shared Mailbox in Outlook", "Microsoft", "published"], ["[Teams Bot] VCON Vihaan ID Redemption Capping", "Customer Facing Concerns", "published"], ["On Boarding Process", "Onboarding / Offboarding", "published"], ["USE OF COMPANY PORTAL", "Microsoft", "published"],
+    ["Off Boarding Process", "Onboarding / Offboarding", "published"], ["Our Offices", "Our Offices", "published"], ["Secureboot Update Guide", "Solutions", "published"], ["Shared Mailbox Accessibility When the Associated AD Account Is Disabled", "Solutions", "published"],
+    ["Unable to Access On-Prem AD & Exchange Hybrid While Working Remotely", "Solutions", "published"], ["Adobe Acrobat Launch Failure", "Microsoft", "published"], ["Cannot Expand Shared Mailbox Folder in Outlook", "Microsoft", "published"], ["COMPLAN - Service Request User Guide", "COMPLAN", "draft"],
+    ["Battery Charging Stuck at ~80% on Microsoft Surface Devices", "Solutions", "published"], ["Defender for Endpoint: responding to a high-severity alert", "Security Operation", "published"], ["Intune: enrolling a personal iPhone (BYOD)", "Device Management", "published"], ["Intune: wiping a lost or stolen laptop", "Device Management", "published"],
+    ["Escalation matrix — who to call after hours", "IT Division Escalation Point", "published"], ["Global Secure Access: first-time sign-in", "Global Secure Access", "published"], ["Setting up MFA with Microsoft Authenticator", "Microsoft", "published"], ["VPN: Cisco Secure Client on macOS", "Microsoft", "published"],
+    ["Requesting a new laptop or replacement", "Asset Management", "published"], ["Meeting room screens in HK and KL", "FAQ", "published"], ["Printing from a personal device", "FAQ", "draft"], ["Phishing: what to do if you clicked", "Security Operation", "published"],
+  ];
+  await db.insert(schema.kbArticles).values(
+    articleSpec.map(([title, folder, status], i) => ({
+      folderId: fid(folder),
+      title,
+      body: `## ${title}\n\nThis article was migrated from Freshservice Solutions. Steps and screenshots are preserved in the archive; content is reviewed on the schedule shown in Admin → Knowledge Base.\n\n1. Open the relevant application.\n2. Follow the on-screen prompts described below.\n3. If the issue persists, raise a ticket and mention this article.`,
+      status,
+      authorId: authors[i % authors.length]!.id,
+      views: chance(0.6) ? 0 : between(1, 40),
+      helpful: chance(0.85) ? 0 : between(1, 3),
+      notHelpful: 0,
+      insertedInTickets: chance(0.8) ? 0 : between(1, 6),
+      reviewDue: chance(0.2) ? "2026-08-15" : "2027-01-31",
+      updatedAt: daysAgo(between(5, 400)),
+      createdAt: daysAgo(between(400, 1100)),
+    })),
+  );
+
+  // ---------- Contracts & purchase orders ----------
+  await db.insert(schema.contracts).values([
+    { name: "Microsoft 365 E3 — enterprise agreement", vendor: "Microsoft", type: "software", status: "active", startDate: "2025-07-01", endDate: "2028-06-30", cost: "181440", billing: "annual", ownerId: byName("Ked Mardemootoo").id, licences: 420 },
+    { name: "Adobe Creative Cloud for teams", vendor: "Adobe", type: "software", status: "active", startDate: "2026-01-15", endDate: "2027-01-14", cost: "12958", billing: "annual", ownerId: byName("Nada Haddad").id, licences: 18 },
+    { name: "Salesforce Sales Cloud", vendor: "Salesforce", type: "software", status: "active", startDate: "2025-10-01", endDate: "2026-09-30", cost: "43200", billing: "annual", ownerId: byName("Nada Haddad").id, licences: 45, notes: "Renewal quote due 1 Sep" },
+    { name: "Dell ProSupport Plus — laptops", vendor: "Dell", type: "warranty", status: "active", startDate: "2024-03-01", endDate: "2027-02-28", cost: "9800", billing: "one-off", ownerId: byName("Marcus Tan").id },
+    { name: "Cisco SmartNet — HK core switches", vendor: "Cisco", type: "maintenance", status: "expiring", startDate: "2023-09-15", endDate: "2026-09-14", cost: "6400", billing: "annual", ownerId: byName("Daniel Lim").id },
+    { name: "Freshservice — Enterprise", vendor: "Freshworks", type: "software", status: "expiring", startDate: "2025-12-01", endDate: "2026-11-30", cost: "100000", billing: "annual", ownerId: byName("Nada Haddad").id, licences: 70, notes: "Not renewing — replaced by TicketFly" },
+    { name: "Zoom Workplace Business", vendor: "Zoom", type: "software", status: "expired", startDate: "2024-06-01", endDate: "2026-05-31", cost: "12800", billing: "annual", ownerId: byName("Priya Sharma").id, licences: 80 },
+  ]);
+  await db.insert(schema.purchaseOrders).values([
+    { number: "PO-2026-0412", vendor: "Dell Technologies", status: "received", total: "18990", orderedAt: "2026-07-02", expectedAt: "2026-07-20", receivedAt: "2026-07-18", requesterId: byName("Marcus Tan").id, items: [{ name: "Latitude 5450", qty: 10, unit: 1899 }] },
+    { number: "PO-2026-0455", vendor: "Apple (HK)", status: "ordered", total: "11996", orderedAt: "2026-08-12", expectedAt: "2026-09-02", requesterId: byName("Marcus Tan").id, items: [{ name: "MacBook Pro 14 (M4)", qty: 4, unit: 2999 }] },
+    { number: "PO-2026-0461", vendor: "Jabra", status: "ordered", total: "5400", orderedAt: "2026-08-19", expectedAt: "2026-08-29", requesterId: byName("Wei Chen").id, items: [{ name: "Evolve2 65", qty: 30, unit: 180 }] },
+    { number: "PO-2026-0398", vendor: "LG Electronics", status: "received", total: "8400", orderedAt: "2026-06-10", expectedAt: "2026-06-30", receivedAt: "2026-06-28", requesterId: byName("Marcus Tan").id, items: [{ name: "27UN850 monitor", qty: 20, unit: 420 }] },
+    { number: "PO-2026-0470", vendor: "Adobe", status: "pending_approval", total: "1440", orderedAt: "2026-08-24", requesterId: byName("Priya Sharma").id, items: [{ name: "Acrobat Pro seat (annual)", qty: 6, unit: 240 }] },
+  ]);
 
   // ---------- Releases ----------
   await db.insert(schema.releases).values([

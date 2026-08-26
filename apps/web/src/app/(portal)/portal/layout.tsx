@@ -20,7 +20,7 @@ export default async function PortalLayout({ children }: { children: React.React
           <div className="ml-auto flex items-center gap-3">
             <CommandPalette portal />
             {staff && (
-              <Link href="/inbox" className="text-[12.5px] font-medium text-ink-3 hover:text-ink">
+              <Link href="/tickets" className="text-[12.5px] font-medium text-ink-3 hover:text-ink">
                 Back to IT workspace
               </Link>
             )}

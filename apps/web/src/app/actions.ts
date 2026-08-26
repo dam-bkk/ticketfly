@@ -18,7 +18,7 @@ export async function signInAs(personId: number) {
   if (!p) redirect("/login");
   (await cookies()).set("tf_persona", String(personId), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 7 });
   await logActivity({ id: p.id, displayName: p.displayName, email: p.email, role: p.role, jobTitle: p.jobTitle, department: p.department, officeLocation: p.officeLocation }, { action: "auth.login", category: "auth", targetType: "person", targetId: p.id });
-  redirect(p.role === "requester" || p.role === "manager" ? "/portal" : "/inbox");
+  redirect(p.role === "requester" || p.role === "manager" ? "/portal" : "/tickets");
 }
 
 export async function signOut() {
@@ -50,7 +50,7 @@ export async function replyToTicket(ticketId: number, formData: FormData) {
   await logActivity(me, { action: kind === "note" ? "ticket.note" : "ticket.reply", category: "ticket", targetType: "ticket", targetId: ticketId, after: { chars: body.length } });
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath(`/portal/requests/${ticketId}`);
-  revalidatePath("/inbox");
+  revalidatePath("/tickets");
 }
 
 export async function updateTicket(ticketId: number, patch: { status?: TicketStatus; priority?: "low" | "medium" | "high" | "urgent"; assigneeId?: number | null; groupId?: number | null; categoryId?: number | null }) {
@@ -112,7 +112,7 @@ export async function updateTicket(ticketId: number, patch: { status?: TicketSta
   }
   if (parts.length) await db.insert(schema.ticketMessages).values({ ticketId, authorId: me.id, kind: "system", body: parts.join(" · "), via: "agent" });
   revalidatePath(`/tickets/${ticketId}`);
-  revalidatePath("/inbox");
+  revalidatePath("/tickets");
 }
 
 export async function createRequest(slug: string, formData: FormData) {
@@ -138,7 +138,7 @@ export async function createRequest(slug: string, formData: FormData) {
   if (service.kind === "onboarding" && answers.join) {
     await db.insert(schema.ticketMessages).values({ ticketId: id, authorId: null, kind: "system", body: `Onboarding workflow started. Account and licences due ${answers.join} minus 5 working days.`, via: "system" });
   }
-  revalidatePath("/inbox");
+  revalidatePath("/tickets");
   redirect(`/portal/requests/${id}?new=1`);
 }
 
@@ -149,6 +149,6 @@ export async function toggleOnboardingTask(onboardingId: number, key: string) {
   const tasks = o.tasks.map((t) => (t.key === key ? { ...t, status: t.status === "done" ? ("todo" as const) : ("done" as const), doneAt: t.status === "done" ? undefined : new Date().toISOString() } : t));
   await db.update(schema.onboardings).set({ tasks }).where(eq(schema.onboardings.id, onboardingId));
   await logActivity(me, { action: "workflow.task.toggle", category: "workflow", targetType: "onboarding", targetId: onboardingId, after: { key } });
-  revalidatePath("/onboarding");
+  revalidatePath("/journeys/onboarding");
   revalidatePath(`/people/${o.personId}`);
 }

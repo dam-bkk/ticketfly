@@ -53,7 +53,7 @@ export default async function RolesPage() {
         <div className="panel p-5">
           <h2 className="text-[14px] font-semibold">Entra app roles</h2>
           <ul className="mt-3 space-y-1.5 font-mono text-[12px] text-ink-2">
-            {["TicketFly.Requester", "TicketFly.Manager", "TicketFly.Agent", "TicketFly.HR", "TicketFly.Admin"].map((r) => (
+            {["Service Desk.Requester", "Service Desk.Manager", "Service Desk.Agent", "Service Desk.HR", "Service Desk.Admin"].map((r) => (
               <li key={r}>{r}</li>
             ))}
           </ul>

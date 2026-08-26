@@ -29,10 +29,10 @@ export default async function Dashboard() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-            <Kpi label="Open" value={k.open} spark={created} href="/inbox" />
-            <Kpi label="Unassigned" value={k.unassigned} tone={k.unassigned > 10 ? "warn" : undefined} href="/inbox?f=unassigned" />
-            <Kpi label="Due within 24h" value={k.atRisk} tone={k.atRisk ? "warn" : undefined} href="/inbox?f=at_risk" />
-            <Kpi label="Breached" value={k.breached} tone={k.breached ? "crit" : undefined} href="/inbox?f=at_risk" />
+            <Kpi label="Open" value={k.open} spark={created} href="/tickets" />
+            <Kpi label="Unassigned" value={k.unassigned} tone={k.unassigned > 10 ? "warn" : undefined} href="/tickets?f=unassigned" />
+            <Kpi label="Due within 24h" value={k.atRisk} tone={k.atRisk ? "warn" : undefined} href="/tickets?f=at_risk" />
+            <Kpi label="Breached" value={k.breached} tone={k.breached ? "crit" : undefined} href="/tickets?f=at_risk" />
             <Kpi label="Median first reply" value={minutesLabel(k.medianFirstResponseMin)} sub="business time" />
             <Kpi label="Resolved · 7d" value={k.resolved7} sub={`${k.created7} created`} spark={resolved.slice(-7)} sparkColor="var(--ok)" />
             <Kpi label="CSAT" value={k.csatN ? `${k.csat.toFixed(1)} / 5` : "—"} sub={k.csatN ? `${k.csatN} ratings` : "no ratings yet"} />
@@ -109,7 +109,7 @@ export default async function Dashboard() {
               <ul className="space-y-1">
                 {workload.map((w) => (
                   <li key={w.id} className="grid grid-cols-[1fr_60px_60px_70px] items-center gap-3 rounded-md px-2 py-1.5 text-[13px] hover:bg-surface-2">
-                    <Link href={`/inbox?f=all`} className="flex min-w-0 items-center gap-2.5">
+                    <Link href={`/tickets?f=all`} className="flex min-w-0 items-center gap-2.5">
                       <Avatar name={w.name} size={26} />
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{w.name}</span>

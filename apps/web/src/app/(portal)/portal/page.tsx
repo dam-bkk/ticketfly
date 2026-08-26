@@ -3,6 +3,8 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { formatTicketRef } from "@ticketfly/core";
 import { requirePrincipal } from "@/lib/auth";
 import { listServices, myRequests } from "@/lib/queries";
+import { myDevices } from "@/lib/assets";
+import { Laptop, Smartphone } from "lucide-react";
 import { relTime, STATUS_LABEL } from "@/lib/utils";
 import { StatusDot } from "@/components/ui/pills";
 import { ServiceIcon } from "./icons";
@@ -17,7 +19,8 @@ function greeting() {
 
 export default async function PortalHome() {
   const me = await requirePrincipal();
-  const [services, requests] = await Promise.all([listServices(), myRequests(me.id)]);
+  const [services, requests, devices] = await Promise.all([listServices(), myRequests(me.id), myDevices(me.id)]);
+  const toAck = devices.filter((d) => !d.acknowledgedAt && !d.returnedAt).length;
   const open = requests.filter((r) => r.status !== "closed" && r.status !== "resolved");
   const popular = services.filter((s) => s.popular);
   const rest = services.filter((s) => !s.popular);
@@ -92,6 +95,24 @@ export default async function PortalHome() {
           )}
         </div>
         <div>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[16px] font-semibold tracking-[-0.01em]">Your devices</h2>
+            <Link href="/portal/devices" className="text-[12.5px] font-medium text-ink-3 hover:text-ink">
+              {toAck ? `${toAck} to acknowledge` : "Manage"}
+            </Link>
+          </div>
+          <ul className="mt-4 mb-8 divide-y divide-line rounded-xl bg-surface hairline">
+            {devices.length === 0 && <li className="px-4 py-3 text-[13px] text-ink-3">No devices recorded against your name.</li>}
+            {devices.slice(0, 3).map((d) => (
+              <li key={d.id}>
+                <Link href="/portal/devices" className="row flex items-center gap-3 px-4 py-2.5 text-[13px] first:rounded-t-xl last:rounded-b-xl">
+                  {d.type === "mobile" ? <Smartphone className="size-4 text-ink-3" /> : <Laptop className="size-4 text-ink-3" />}
+                  <span className="min-w-0 flex-1 truncate font-medium">{d.model ?? d.name}</span>
+                  <span className={`text-[11.5px] ${d.returnedAt ? "text-warn" : d.acknowledgedAt ? "text-ink-4" : "font-medium text-accent-ink"}`}>{d.returnedAt ? "Returned" : d.acknowledgedAt ? "Acknowledged" : "Acknowledge"}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
           <h2 className="text-[16px] font-semibold tracking-[-0.01em]">Good to know</h2>
           <ul className="mt-4 space-y-3">
             {[

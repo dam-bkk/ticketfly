@@ -27,7 +27,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <Topbar crumbs={[{ label: "Inbox", href: "/inbox" }, { label: ref }]} />
+      <Topbar crumbs={[{ label: "Tickets", href: "/tickets" }, { label: ref }]} />
       <div className="flex min-h-0 flex-1">
         {/* Conversation */}
         <div className="flex min-w-0 flex-1 flex-col">
@@ -80,7 +80,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
                       <span className="absolute inset-[5px] rounded-full bg-ink-4" />
                     </span>
                     <span className="text-[12.5px] text-ink-3">
-                      <span className="font-medium text-ink-2">{author ?? "TicketFly"}</span> {m.body} <span className="text-ink-4">· {relTime(m.createdAt)}</span>
+                      <span className="font-medium text-ink-2">{author ?? "Service Desk"}</span> {m.body} <span className="text-ink-4">· {relTime(m.createdAt)}</span>
                     </span>
                   </li>
                 ) : (

@@ -9,6 +9,7 @@ export function PortalNav() {
   const items: [string, string][] = [
     ["/portal", "Home"],
     ["/portal/requests", "My requests"],
+    ["/portal/devices", "My devices"],
     ["/portal/help", "Guides"],
   ];
   return (

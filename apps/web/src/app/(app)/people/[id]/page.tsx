@@ -8,7 +8,7 @@ import { money, relTime } from "@/lib/utils";
 import { Topbar } from "@/components/shell/topbar";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusDot, Tone } from "@/components/ui/pills";
-import { TaskList } from "../../onboarding/task-list";
+import { TaskList } from "../../journeys/onboarding/task-list";
 
 export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {
   await requireStaff();

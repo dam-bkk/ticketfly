@@ -80,12 +80,12 @@ export function CommandPalette({ portal }: { portal?: boolean }) {
                 {!q.trim() && !portal && (
                   <Command.Group heading={<Heading>Go to</Heading>}>
                     {[
-                      ["/inbox", "Inbox", <Inbox key="i" className="size-4" />],
+                      ["/tickets", "Tickets", <Inbox key="i" className="size-4" />],
                       ["/dashboard", "Dashboard", <BarChart3 key="d" className="size-4" />],
-                      ["/assets", "Assets", <Laptop key="a" className="size-4" />],
+                      ["/assets/inventory", "Assets · Inventory", <Laptop key="a" className="size-4" />],
                       ["/people", "People", <Users key="p" className="size-4" />],
-                      ["/onboarding", "Joiners & leavers", <UserPlus key="o" className="size-4" />],
-                      ["/settings", "Settings", <Settings key="s" className="size-4" />],
+                      ["/journeys/onboarding", "Journeys · Onboarding", <UserPlus key="o" className="size-4" />],
+                      ["/admin", "Admin", <Settings key="s" className="size-4" />],
                     ].map(([href, label, icon]) => (
                       <Row key={href as string} onSelect={() => go(href as string)} icon={icon as React.ReactNode}>
                         {label as string}

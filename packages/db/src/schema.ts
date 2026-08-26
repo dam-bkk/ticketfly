@@ -178,6 +178,30 @@ export const assets = pgTable(
     encrypted: boolean("encrypted"),
     purchaseDate: date("purchase_date"),
     cost: numeric("cost", { precision: 10, scale: 2 }),
+    // Freshservice-parity properties
+    impact: text("impact").notNull().default("low"),
+    usageType: text("usage_type").notNull().default("permanent"),
+    department: text("department"),
+    managedById: integer("managed_by_id"),
+    managedByGroupId: integer("managed_by_group_id"),
+    assignedOn: timestamp("assigned_on", { withTimezone: true }),
+    endOfLife: date("end_of_life"),
+    vendor: text("vendor"),
+    warrantyExpiry: date("warranty_expiry"),
+    domain: text("domain"),
+    hostname: text("hostname"),
+    memoryGb: numeric("memory_gb", { precision: 8, scale: 2 }),
+    diskGb: numeric("disk_gb", { precision: 8, scale: 2 }),
+    cpuGhz: numeric("cpu_ghz", { precision: 5, scale: 2 }),
+    cpuCores: integer("cpu_cores"),
+    macAddress: text("mac_address"),
+    ipAddress: text("ip_address"),
+    lastLoginBy: text("last_login_by"),
+    discoveryEnabled: boolean("discovery_enabled").notNull().default(true),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+    returnedAt: timestamp("returned_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("assets_tag_idx").on(t.assetTag)],
 );
@@ -198,6 +222,7 @@ export const assetSoftware = pgTable(
     assetId: integer("asset_id").notNull(),
     softwareId: integer("software_id").notNull(),
     version: text("version").notNull(),
+    status: text("status").notNull().default("in_review"),
     detectedAt: timestamp("detected_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.assetId, t.softwareId] })],
@@ -288,3 +313,82 @@ export const savedViews = pgTable("saved_views", {
   filter: jsonb("filter").notNull(),
   shared: boolean("shared").notNull().default(false),
 });
+
+// ---------- Freshservice-parity modules ----------
+export const workspaces = pgTable("workspaces", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  primary: boolean("primary").notNull().default(false),
+  icon: text("icon").notNull().default("monitor"),
+});
+
+export const kbFolders = pgTable("kb_folders", {
+  id: serial("id").primaryKey(),
+  category: text("category").notNull(),
+  name: text("name").notNull(),
+  visibility: text("visibility").notNull().default("all"),
+});
+
+export const kbArticles = pgTable(
+  "kb_articles",
+  {
+    id: serial("id").primaryKey(),
+    folderId: integer("folder_id").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull().default(""),
+    status: text("status").notNull().default("published"),
+    authorId: integer("author_id"),
+    views: integer("views").notNull().default(0),
+    helpful: integer("helpful").notNull().default(0),
+    notHelpful: integer("not_helpful").notNull().default(0),
+    insertedInTickets: integer("inserted_in_tickets").notNull().default(0),
+    reviewDue: date("review_due"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("kb_articles_folder_idx").on(t.folderId)],
+);
+
+export const contracts = pgTable("contracts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  vendor: text("vendor").notNull(),
+  type: text("type").notNull().default("software"),
+  status: text("status").notNull().default("active"),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  cost: numeric("cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  billing: text("billing").notNull().default("annual"),
+  ownerId: integer("owner_id"),
+  licences: integer("licences"),
+  notes: text("notes"),
+});
+
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: serial("id").primaryKey(),
+  number: text("number").notNull().unique(),
+  vendor: text("vendor").notNull(),
+  status: text("status").notNull().default("ordered"),
+  total: numeric("total", { precision: 12, scale: 2 }).notNull().default("0"),
+  currency: text("currency").notNull().default("USD"),
+  orderedAt: date("ordered_at").notNull(),
+  expectedAt: date("expected_at"),
+  receivedAt: date("received_at"),
+  requesterId: integer("requester_id"),
+  items: jsonb("items").$type<{ name: string; qty: number; unit: number }[]>().notNull().default([]),
+});
+
+export const assetAssignments = pgTable(
+  "asset_assignments",
+  {
+    id: serial("id").primaryKey(),
+    assetId: integer("asset_id").notNull(),
+    personId: integer("person_id"),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+    returnedAt: timestamp("returned_at", { withTimezone: true }),
+    note: text("note"),
+  },
+  (t) => [index("asset_assignments_asset_idx").on(t.assetId)],
+);

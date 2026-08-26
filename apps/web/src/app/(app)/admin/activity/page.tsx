@@ -27,7 +27,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   const page = Number(sp.page ?? 1);
   const { rows, total, pageSize, cats } = await activityLogPage({ category: sp.category, q: sp.q, page });
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  const qs = (p: number) => `/settings/activity?${new URLSearchParams({ ...(sp.category ? { category: sp.category } : {}), ...(sp.q ? { q: sp.q } : {}), page: String(p) })}`;
+  const qs = (p: number) => `/admin/activity?${new URLSearchParams({ ...(sp.category ? { category: sp.category } : {}), ...(sp.q ? { q: sp.q } : {}), page: String(p) })}`;
 
   return (
     <div>
@@ -47,11 +47,11 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
           <input name="q" defaultValue={sp.q} placeholder="Search actor, action, target, IP" className="h-8 w-72 rounded-md bg-surface px-3 text-[13px] hairline focus:outline-none focus:shadow-[inset_0_0_0_1px_var(--accent),0_0_0_3px_var(--ring)]" />
         </form>
         <div className="ml-2 flex flex-wrap gap-1">
-          <Link href="/settings/activity" className={cn("h-7 rounded-md px-2.5 text-[12.5px] font-medium leading-7 text-ink-2 hover:bg-surface-2", !sp.category && "bg-surface-2 text-ink")}>
+          <Link href="/admin/activity" className={cn("h-7 rounded-md px-2.5 text-[12.5px] font-medium leading-7 text-ink-2 hover:bg-surface-2", !sp.category && "bg-surface-2 text-ink")}>
             All <span className="tnum text-ink-4">{cats.reduce((a, c) => a + Number(c.n), 0)}</span>
           </Link>
           {cats.map((c) => (
-            <Link key={c.category} href={`/settings/activity?category=${c.category}`} className={cn("h-7 rounded-md px-2.5 text-[12.5px] font-medium capitalize leading-7 text-ink-2 hover:bg-surface-2", sp.category === c.category && "bg-surface-2 text-ink")}>
+            <Link key={c.category} href={`/admin/activity?category=${c.category}`} className={cn("h-7 rounded-md px-2.5 text-[12.5px] font-medium capitalize leading-7 text-ink-2 hover:bg-surface-2", sp.category === c.category && "bg-surface-2 text-ink")}>
               {c.category} <span className="tnum text-ink-4">{c.n}</span>
             </Link>
           ))}

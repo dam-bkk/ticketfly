@@ -8,11 +8,9 @@ import { Topbar } from "@/components/shell/topbar";
 import { Avatar } from "@/components/ui/avatar";
 import { ButtonLink } from "@/components/ui/button";
 import { Tone } from "@/components/ui/pills";
-import { TaskList } from "./task-list";
+import { TaskList } from "./onboarding/task-list";
 
-export const metadata = { title: "Joiners & leavers" };
-
-export default async function OnboardingPage() {
+export async function JourneysBoard({ kind }: { kind: "onboarding" | "offboarding" }) {
   await requireStaff();
   const rows = await listOnboardings();
   const joiners = rows.filter((r) => r.o.kind === "onboarding");
@@ -23,21 +21,27 @@ export default async function OnboardingPage() {
   return (
     <>
       <Topbar
-        crumbs={[{ label: "Joiners & leavers" }]}
+        crumbs={[{ label: "Journeys" }, { label: kind === "onboarding" ? "Onboarding" : "Offboarding" }]}
         actions={
-          <ButtonLink href="/portal/new/new-starter" variant="primary">
-            New starter
+          <ButtonLink href={kind === "onboarding" ? "/portal/new/new-starter" : "/portal/new/leaver"} variant="secondary">
+            {kind === "onboarding" ? "New starter" : "New leaver"}
           </ButtonLink>
         }
       />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1180px] px-6 py-6 rise">
-          <div>
-            <h1 className="text-[20px] font-semibold tracking-[-0.01em]">Joiners &amp; leavers</h1>
-            <p className="text-[13px] text-ink-3">One request from HR fans out to every team. Accounts ready five working days before day one; access removed on the last day, HR told when it is done.</p>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h1 className="text-[20px] font-semibold tracking-[-0.01em]">{kind === "onboarding" ? "Employee onboarding" : "Employee offboarding"}</h1>
+              <p className="text-[13px] text-ink-3">{kind === "onboarding" ? "One request from HR fans out to every team. Accounts and licences ready five working days before day one." : "Scheduled from the last day: sign-in disabled, every grant on the person record revoked, devices back, HR told when it is done."}</p>
+            </div>
+            <nav className="flex gap-1 rounded-lg bg-surface-2 p-1">
+              <Link href="/journeys/onboarding" className={cn("h-7 rounded-md px-3 text-[12.5px] font-medium leading-7 text-ink-2", kind === "onboarding" ? "bg-surface text-ink shadow-1" : "hover:text-ink")}>Onboarding</Link>
+              <Link href="/journeys/offboarding" className={cn("h-7 rounded-md px-3 text-[12.5px] font-medium leading-7 text-ink-2", kind === "offboarding" ? "bg-surface text-ink shadow-1" : "hover:text-ink")}>Offboarding</Link>
+            </nav>
           </div>
 
-          {overdueLeavers.length > 0 && (
+          {kind === "offboarding" && overdueLeavers.length > 0 && (
             <div className="mt-5 flex items-center gap-3 rounded-lg bg-crit-soft px-4 py-3 text-[13px] text-crit">
               <AlertTriangle className="size-4 shrink-0" />
               <span>
@@ -47,8 +51,19 @@ export default async function OnboardingPage() {
           )}
 
           <div className="mt-6 grid gap-6 xl:grid-cols-2">
-            <Column title="Joining" hint="Countdown to day one" items={joiners} kind="onboarding" />
-            <Column title="Leaving" hint="Countdown to last day" items={leavers} kind="offboarding" />
+            {kind === "onboarding" ? <Column title="Joining" hint="Countdown to day one" items={joiners} kind="onboarding" /> : <Column title="Leaving" hint="Countdown to last day" items={leavers} kind="offboarding" />}
+            <aside className="space-y-3">
+              <div className="panel p-4">
+                <p className="label mb-2">How it works</p>
+                <ol className="list-decimal space-y-1.5 pl-4 text-[13px] text-ink-2">
+                  {kind === "onboarding" ? ["HR raises New starter from the portal — join date, role, and a colleague to clone access from.", "IT reviews the resolved access list once; every grant is recorded on the person record.", "Account and licences are created at join − 5 working days; laptop shipped at − 3.", "Day one: activation email with the welcome pack; requester acknowledges the laptop in the portal."].map((s) => <li key={s}>{s}</li>) : ["HR (or the manager) raises Leaver with the last working day.", "Devices are recalled; the requester confirms return from the portal.", "On the last day: sign-in disabled, sessions revoked, every grant removed in reverse.", "Watchdog alerts HR and IT if anything is still active 24 h later."].map((s) => <li key={s}>{s}</li>)}
+                </ol>
+              </div>
+              <div className="panel p-4">
+                <p className="label mb-2">Replaces in Freshservice</p>
+                <p className="text-[13px] text-ink-2">Admin → Service Request Management → {kind === "onboarding" ? "Employee Onboarding" : "Employee Offboarding"}, plus the RFI and COPE forms that lived outside the tool.</p>
+              </div>
+            </aside>
           </div>
         </div>
       </div>
