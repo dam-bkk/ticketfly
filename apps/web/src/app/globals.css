@@ -114,7 +114,7 @@ html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 body {
   background: var(--canvas);
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 13.5px;
   line-height: 1.5;
   font-feature-settings: "cv11", "ss01", "tnum" 0;
