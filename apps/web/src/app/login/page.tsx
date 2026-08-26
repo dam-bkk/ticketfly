@@ -22,8 +22,8 @@ export default async function Login() {
         <div className="relative flex h-full flex-col justify-between p-12">
           <Logo className="[&_span]:text-canvas dark:[&_span]:text-ink" />
           <div className="max-w-md">
-            <p className="font-display text-[44px] leading-[1.05] tracking-[-0.01em]">
-              Every request, <em>from hello to goodbye.</em>
+            <p className="text-[40px] font-semibold leading-[1.08] tracking-[-0.03em]">
+              Every request, <span className="font-normal text-canvas/60 dark:text-ink-3">from hello to goodbye.</span>
             </p>
             <p className="mt-4 text-[14px] leading-relaxed text-canvas/70 dark:text-ink-2">Tickets, devices, joiners and leavers in one place — with the whole Freshservice history behind it.</p>
           </div>

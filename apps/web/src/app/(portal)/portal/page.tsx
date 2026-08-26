@@ -27,8 +27,8 @@ export default async function PortalHome() {
     <div className="rise">
       <section className="pt-14 pb-10">
         <p className="eyebrow">{me.department} · {me.officeLocation}</p>
-        <h1 className="mt-3 font-display text-[44px] leading-[1.08] tracking-[-0.01em] text-ink md:text-[52px]" style={{ textWrap: "balance" }}>
-          {greeting()}, {first}. <em className="text-ink-2">What do you need?</em>
+        <h1 className="mt-3 text-[38px] font-semibold leading-[1.1] tracking-[-0.03em] text-ink md:text-[46px]" style={{ textWrap: "balance" }}>
+          {greeting()}, {first}. <span className="font-normal text-ink-3">What do you need?</span>
         </h1>
         <div className="mt-7 max-w-2xl">
           <PortalSearch services={services.map((s) => ({ slug: s.slug, name: s.name, tagline: s.tagline, icon: s.icon }))} />
