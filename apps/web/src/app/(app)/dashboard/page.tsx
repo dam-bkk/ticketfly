@@ -76,7 +76,7 @@ export default async function Dashboard() {
             <Link href="/changes?f=approval" className="panel grid grid-rows-[20px_1fr_16px] gap-2 p-4 transition-shadow hover:shadow-2">
               <span className="truncate text-[13px] font-semibold">My Pending Approvals</span>
               <p className={cn("tnum self-end text-[30px] font-semibold leading-none tracking-[-0.02em]", approvals.length && "text-accent-ink")}>{approvals.length}<span className="ml-1.5 text-[11.5px] font-medium text-ink-3">waiting</span></p>
-              <p className="text-[11.5px] text-ink-3">Changes, tickets &amp; post-incident reports</p>
+              <p className="text-[11.5px] text-ink-3">Changes awaiting my decision</p>
             </Link>
           </div>
 

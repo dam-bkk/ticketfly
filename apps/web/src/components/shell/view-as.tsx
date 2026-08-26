@@ -57,7 +57,7 @@ export function ViewAsBar({ people, viewing }: { people: P[]; viewing: { id: num
               </button>
             );
           })}
-          <button type="button" onClick={() => setOpen((o) => !o)} className={cn("rounded-[7px] px-2.5 py-1 text-[11.5px] font-semibold", open ? "bg-white/20 text-white" : "bg-white/10 text-white/60 hover:bg-white/15 hover:text-white")} title="Pick a specific person">
+          <button type="button" onClick={() => setOpen((o) => !o)} className={cn("shrink-0 whitespace-nowrap rounded-[7px] px-2.5 py-1 text-[11.5px] font-semibold", open ? "bg-white/20 text-white" : "bg-white/10 text-white/60 hover:bg-white/15 hover:text-white")} title="Pick a specific person">
             Person…
           </button>
         </div>
