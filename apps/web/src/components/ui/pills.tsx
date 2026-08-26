@@ -47,7 +47,7 @@ export function SlaChip({ sla, compact }: { sla: SlaView; compact?: boolean }) {
   const tone =
     sla.status === "breached" ? "text-crit bg-crit-soft" : sla.status === "at_risk" ? "text-warn bg-warn-soft" : sla.status === "met" ? "text-ok bg-ok-soft" : sla.status === "paused" ? "text-ink-3 bg-surface-2" : "text-ink-2 bg-surface-2";
   return (
-    <span className={cn("tnum inline-flex h-6 items-center gap-1 rounded-md px-2 text-[12px] font-medium", tone)}>
+    <span className={cn("tnum inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[12px] font-medium", tone)}>
       {sla.status === "paused" && <Pause className="size-3" />}
       {compact && sla.status === "ok" ? sla.label.replace(" left", "") : sla.label}
     </span>

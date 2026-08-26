@@ -81,7 +81,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           <ul className="rise">
             {rows.map((t) => (
               <li key={t.id} className="row hairline-b">
-                <Link href={`/tickets/${t.id}`} className="grid grid-cols-[20px_minmax(0,1fr)_150px_120px_112px_40px_88px] items-center gap-3 px-5 py-2.5">
+                <Link href={`/tickets/${t.id}`} className="grid grid-cols-[20px_minmax(0,1fr)_132px_230px_110px_36px_84px] items-center gap-3 px-5 py-2.5">
                   <PriorityMark priority={t.priority} />
                   <span className="min-w-0">
                     <span className="flex items-center gap-2">
@@ -104,7 +104,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
                     </span>
                   </span>
                   <StatusPill status={t.status} />
-                  <span className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-1.5 whitespace-nowrap">
                     {t.status === "open" && !t.assigneeId && <span className="rounded bg-ok-soft px-1.5 py-0.5 text-[11px] font-medium text-ok">New</span>}
                     {t.requesterResponded && !["resolved", "closed", "cancelled"].includes(t.status) && <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-accent-ink">Requester responded</span>}
                     {t.status === "closed" || t.status === "resolved" || t.status === "cancelled" ? <span className="text-[12px] text-ink-4">{t.sla.status === "met" ? "Resolved on time" : t.sla.status === "breached" ? "Resolved late" : ""}</span> : <SlaChip sla={t.sla} compact />}
