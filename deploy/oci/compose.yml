@@ -1,0 +1,46 @@
+# Dev/demo deployment on the OCI VM (ticketfly.damien.asia). Production is Azure — see infra/.
+# VM: cd /opt/apps/ticketfly && git pull --ff-only && sudo docker compose -f deploy/oci/compose.yml up --build -d
+# First run / reset data: sudo docker compose -f deploy/oci/compose.yml --profile seed run --rm seed
+name: ticketfly
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ticketfly
+      POSTGRES_USER: ticketfly
+      POSTGRES_PASSWORD: ticketfly-dev-only
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketfly -d ticketfly"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  web:
+    build:
+      context: ../..
+      target: web
+      args:
+        APP_VERSION: ${APP_VERSION:-0.1.0}
+        GIT_SHA: ${GIT_SHA:-local}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://ticketfly:ticketfly-dev-only@db:5432/ticketfly
+      APP_ENV: demo
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      GIT_SHA: ${GIT_SHA:-local}
+    ports: ["172.18.0.1:3025:3000"]
+    depends_on:
+      db: { condition: service_healthy }
+  seed:
+    profiles: [seed]
+    build:
+      context: ../..
+      target: build
+    environment:
+      DATABASE_URL: postgres://ticketfly:ticketfly-dev-only@db:5432/ticketfly
+    command: sh -lc "pnpm db:push && pnpm db:seed"
+    depends_on:
+      db: { condition: service_healthy }
+volumes:
+  pgdata: {}
