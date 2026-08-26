@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatTicketRef } from "@ticketfly/core";
 import { linkIncident, raiseChangeFromProblem, updateProblem } from "@/app/module-actions";
 import { requireStaff } from "@/lib/auth";
 import { getProblem } from "@/lib/modules";
@@ -98,7 +97,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
                   {incidents.map((t) => (
                     <li key={t.id} className="flex items-center gap-3 py-2 text-[13px]">
                       <StatusDot status={t.status} />
-                      <span className="w-24 font-mono text-[11.5px] text-ink-3">{t.legacyRef ?? formatTicketRef(t.id)}</span>
+                      <span className="w-24 font-mono text-[11.5px] text-ink-3">{t.ref}</span>
                       <RefLink href={`/tickets/${t.id}`}>{t.subject}</RefLink>
                       <span className="ml-auto text-[12px] text-ink-3">{t.requester}</span>
                       <PriorityMark priority={t.priority} />

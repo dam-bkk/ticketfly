@@ -127,13 +127,24 @@ async function main() {
     { displayName: "Marcus Tan", jobTitle: "Endpoint Engineer", role: "agent" as const, office: "Singapore" },
     { displayName: "Siti Abdullah", jobTitle: "Identity & Access Analyst", role: "agent" as const, office: "Kuala Lumpur" },
     { displayName: "Daniel Lim", jobTitle: "Network Engineer", role: "agent" as const, office: "Hong Kong" },
+    { displayName: "Darwin Galao", jobTitle: "Cloud Infrastructure Engineer", role: "agent" as const, office: "Manila" },
+    { displayName: "Carl Anthony Lim", jobTitle: "Cloud Infrastructure Engineer", role: "agent" as const, office: "Manila" },
+    { displayName: "Gilbert Cubio", jobTitle: "Cloud Infrastructure Engineer", role: "agent" as const, office: "Manila" },
+    { displayName: "Manikanta Kedarisetty", jobTitle: "Database Administrator", role: "agent" as const, office: "Hong Kong" },
+    { displayName: "Blessy Israel Dasari", jobTitle: "Database Administrator", role: "agent" as const, office: "Hong Kong" },
+    { displayName: "Marri Monoj Kumar", jobTitle: "Database Engineer", role: "agent" as const, office: "Hong Kong" },
+    { displayName: "Abdul Azim Abdul Aziz", jobTitle: "Security Analyst", role: "agent" as const, office: "Kuala Lumpur" },
+    { displayName: "Adrian Gabutero", jobTitle: "Security Analyst", role: "agent" as const, office: "Manila" },
+    { displayName: "Alvin De Guzman", jobTitle: "Security Analyst", role: "agent" as const, office: "Manila" },
     { displayName: "Farah Ismail", jobTitle: "HR Business Partner", role: "hr" as const, office: "Kuala Lumpur" },
     { displayName: "Grace Lee", jobTitle: "People Operations Manager", role: "hr" as const, office: "Hong Kong" },
   ];
   for (const a of agentsSpec) {
-    const [f, l] = a.displayName.split(" ");
+    const parts = a.displayName.split(" ");
+    const f = parts[0]!;
+    const l = parts[parts.length - 1]!;
     peopleRows.push({
-      email: `${f!.toLowerCase()}.${l!.toLowerCase()}@qigroup.com`,
+      email: `${f.toLowerCase()}.${l.toLowerCase()}${parts.length > 2 ? parts[1]!.slice(0, 1).toLowerCase() : ""}@qigroup.com`,
       displayName: a.displayName,
       jobTitle: a.jobTitle,
       department: a.role === "hr" ? "People & Culture" : "IT",
@@ -163,6 +174,8 @@ async function main() {
       joinDate: `20${between(15, 25)}-${String(between(1, 12)).padStart(2, "0")}-${String(between(1, 28)).padStart(2, "0")}`,
     });
   }
+  // Automation-created tickets arrive from a service account, exactly as in Freshservice today.
+  peopleRows.push({ email: "devops.service@qigroup.com", displayName: "DevOps Service Account", jobTitle: "Service account", department: "Automation", officeLocation: "Hong Kong", role: "requester", status: "active", joinDate: "2022-01-01" });
   // Joiners & leavers for onboarding module
   peopleRows.push(
     { email: "elena.petrova@qigroup.com", displayName: "Elena Petrova", jobTitle: "Marketing Manager", department: "Marketing", officeLocation: "Dubai", role: "requester", status: "onboarding", joinDate: "2026-09-01" },
@@ -187,20 +200,20 @@ async function main() {
   const groupRows = await db
     .insert(schema.groups)
     .values([
-      { name: "Service Desk", description: "First line — incidents and requests" },
-      { name: "Endpoint & Devices", description: "Laptops, mobiles, Intune, Defender" },
-      { name: "Identity & Access", description: "Entra ID, licences, joiners and leavers" },
-      { name: "Network & Infrastructure", description: "Wi-Fi, VPN, servers, Azure" },
+      { name: "Servicedesk Support", description: "First line — incidents, requests, endpoints" },
+      { name: "Cloud Infrastructure Support", description: "Infra — Azure, network, VPN, servers" },
+      { name: "Security Operations Centre", description: "SOC — Defender, identity, access" },
+      { name: "Database", description: "DB — backups, performance, access" },
+      { name: "Automation", description: "IntelliFlow, SendGrid, service-account requests" },
     ])
     .returning();
   const gid = (n: string) => groupRows.find((g) => g.name === n)!.id;
   await db.insert(schema.groupMembers).values([
-    { groupId: gid("Service Desk"), personId: byName("Wei Chen").id },
-    { groupId: gid("Service Desk"), personId: byName("Priya Sharma").id },
-    { groupId: gid("Endpoint & Devices"), personId: byName("Marcus Tan").id },
-    { groupId: gid("Identity & Access"), personId: byName("Siti Abdullah").id },
-    { groupId: gid("Network & Infrastructure"), personId: byName("Daniel Lim").id },
-    { groupId: gid("Network & Infrastructure"), personId: byName("Ked Mardemootoo").id },
+    ...["Wei Chen", "Priya Sharma", "Marcus Tan"].map((n) => ({ groupId: gid("Servicedesk Support"), personId: byName(n).id })),
+    ...["Daniel Lim", "Ked Mardemootoo", "Darwin Galao", "Carl Anthony Lim", "Gilbert Cubio"].map((n) => ({ groupId: gid("Cloud Infrastructure Support"), personId: byName(n).id })),
+    ...["Siti Abdullah", "Abdul Azim Abdul Aziz", "Adrian Gabutero", "Alvin De Guzman", "Ked Mardemootoo"].map((n) => ({ groupId: gid("Security Operations Centre"), personId: byName(n).id })),
+    ...["Manikanta Kedarisetty", "Blessy Israel Dasari", "Marri Monoj Kumar", "Ked Mardemootoo"].map((n) => ({ groupId: gid("Database"), personId: byName(n).id })),
+    ...["Ked Mardemootoo", "Darwin Galao"].map((n) => ({ groupId: gid("Automation"), personId: byName(n).id })),
   ]);
   const catRows = await db
     .insert(schema.categories)
@@ -222,18 +235,18 @@ async function main() {
   };
   const groupFor = (categoryId: number): number => {
     const name = catRows.find((c) => c.id === categoryId)!.name;
-    if (name === "Network") return gid("Network & Infrastructure");
-    if (name === "Hardware" || name === "Mobile") return gid("Endpoint & Devices");
-    if (name === "Access & Identity" || name === "Licences" || name === "Onboarding" || name === "Offboarding") return gid("Identity & Access");
-    return gid("Service Desk");
+    if (name === "Network") return gid("Cloud Infrastructure Support");
+    if (name === "Security" || name === "Access & Identity" || name === "Onboarding" || name === "Offboarding") return gid("Security Operations Centre");
+    return gid("Servicedesk Support");
   };
   const agentsForGroup = (groupId: number) => {
     const name = groupRows.find((g) => g.id === groupId)!.name;
     const map: Record<string, string[]> = {
-      "Service Desk": ["Wei Chen", "Priya Sharma"],
-      "Endpoint & Devices": ["Marcus Tan", "Wei Chen"],
-      "Identity & Access": ["Siti Abdullah", "Priya Sharma"],
-      "Network & Infrastructure": ["Daniel Lim", "Ked Mardemootoo"],
+      "Servicedesk Support": ["Wei Chen", "Priya Sharma", "Marcus Tan"],
+      "Cloud Infrastructure Support": ["Daniel Lim", "Darwin Galao", "Carl Anthony Lim", "Gilbert Cubio"],
+      "Security Operations Centre": ["Siti Abdullah", "Abdul Azim Abdul Aziz", "Adrian Gabutero"],
+      Database: ["Manikanta Kedarisetty", "Blessy Israel Dasari", "Marri Monoj Kumar"],
+      Automation: ["Ked Mardemootoo", "Darwin Galao"],
     };
     return (map[name] ?? ["Wei Chen"]).map(byName);
   };
@@ -305,14 +318,14 @@ async function main() {
   }
 
   // Live TicketFly tickets (last 30 days), mixed statuses.
-  const liveStatuses: (typeof schema.tickets.$inferInsert)["status"][] = ["open", "open", "open", "in_progress", "in_progress", "pending", "on_hold", "resolved", "closed", "closed"];
+  const liveStatuses: (typeof schema.tickets.$inferInsert)["status"][] = ["open", "open", "open", "in_progress", "in_progress", "pending", "pending_approval", "on_hold", "resolved", "closed", "closed", "cancelled"];
   for (let i = 0; i < 130; i++) {
     const isReq = chance(0.4);
     const subject = `${pick(NAME_PREFIXES)}${isReq ? pick(REQUEST_SUBJECTS) : pick(INCIDENT_SUBJECTS)}`;
     // Most live work is recent; anything older than the medium allowance is resolved, waiting or on hold.
     const ageHours = chance(0.7) ? between(1, 60) : between(60, 30 * 24);
     const createdAt = hoursAgo(ageHours);
-    const status = ageHours < 6 ? pick(["open", "open", "in_progress"] as const) : ageHours < 60 ? pick(liveStatuses) : pick(["resolved", "closed", "closed", "closed", "pending", "on_hold"] as const);
+    const status = ageHours < 6 ? pick(["open", "open", "in_progress"] as const) : ageHours < 60 ? pick(liveStatuses) : pick(["resolved", "closed", "closed", "closed", "pending", "on_hold", "cancelled", "transferred"] as const);
     const priority = pick(priorities);
     const categoryId = catFor(subject);
     const groupId = groupFor(categoryId);
@@ -321,7 +334,7 @@ async function main() {
     const responded = assigned && chance(0.85);
     const firstResp = responded ? new Date(createdAt.getTime() + between(5, 240) * 60_000) : null;
     const resolvedAt = status === "resolved" || status === "closed" ? new Date(createdAt.getTime() + between(1, 60) * 3_600_000) : null;
-    const pausedSince = status === "pending" || status === "on_hold" ? new Date(createdAt.getTime() + between(1, 6) * 3_600_000) : null;
+    const pausedSince = status === "pending" || status === "on_hold" || status === "pending_approval" ? new Date(createdAt.getTime() + between(1, 6) * 3_600_000) : null;
     ticketRows.push({
       kind: isReq ? "request" : "incident",
       subject,
@@ -352,6 +365,26 @@ async function main() {
     messageQueue.push({ idx: ticketRows.length - 1, msgs });
   }
 
+  // Automation-created tickets — the IntelliFlow / SendGrid / DB-backup pattern from the live desk.
+  const svc = byName("DevOps Service Account");
+  const autoSubjects: [string, "incident" | "request", string][] = [
+    ["Prod DB Auto Backup Error on prd-yoda-cp01", "incident", "Database"],
+    ["SendGrid - Remove email(s) in bounce list - INTELLIFLOW", "request", "Automation"],
+    ["Request for Thilini Bandaranayake : Migration Localisation Active IR Lists (Tanzania)", "request", "Cloud Infrastructure Support"],
+    ["Request for John Jerry Fernandez : Migration Localisation Active IR Lists (Tanzania)", "request", "Cloud Infrastructure Support"],
+    ["Whitelist IP address for Cathy Ho on synw0prod for 9 hours - INTELLIFLOW", "request", "Cloud Infrastructure Support"],
+    ["Scale up DEV qll namespace for 7 hr(s) by Mohd Ashraf Alias - INTELLIFLOW", "request", "Cloud Infrastructure Support"],
+    ["High-severity alert: A potentially malicious URL click was detected.", "incident", "Security Operations Centre"],
+  ];
+  for (let i = 0; i < 26; i++) {
+    const [subject, kind, group] = pick(autoSubjects);
+    const createdAt = hoursAgo(between(2, 30 * 24));
+    const status = pick(["open", "open", "in_progress", "pending_approval", "resolved", "closed", "closed", "cancelled"] as const);
+    const assignee = pick(agentsForGroup(gid(group)));
+    ticketRows.push({ kind, subject, description: "Created by automation (IntelliFlow). See the linked run for parameters.", status, priority: subject.startsWith("High-severity") ? "high" : "low", requesterId: svc.id, assigneeId: status === "open" ? null : assignee.id, groupId: gid(group), categoryId: group === "Database" ? cat("Software") : group === "Security Operations Centre" ? cat("Security") : cat("Network"), source: "system", tags: ["intelliflow"], createdAt, updatedAt: createdAt, firstRespondedAt: status === "open" ? null : new Date(createdAt.getTime() + 30 * 60_000), resolvedAt: status === "resolved" || status === "closed" ? new Date(createdAt.getTime() + 6 * 3_600_000) : null, closedAt: status === "closed" ? new Date(createdAt.getTime() + 6 * 3_600_000) : null, firstResponseDueAt: new Date(addBusinessMinutes(createdAt.getTime(), 480, HK_BUSINESS_HOURS)), resolutionDueAt: new Date(addBusinessMinutes(createdAt.getTime(), 45 * 60, HK_BUSINESS_HOURS)), workspace: "it" });
+    messageQueue.push({ idx: ticketRows.length - 1, msgs: [] });
+  }
+
   // Onboarding / offboarding tickets
   const onboardingPeople = insertedPeople.filter((p) => p.status === "onboarding" || p.status === "offboarding");
   const fullPeople = await db.select().from(schema.people);
@@ -366,7 +399,7 @@ async function main() {
       priority: "high",
       requesterId: byName("Farah Ismail").id,
       assigneeId: byName("Siti Abdullah").id,
-      groupId: gid("Identity & Access"),
+      groupId: gid("Security Operations Centre"),
       categoryId: cat(isOff ? "Offboarding" : "Onboarding"),
       source: "portal",
       tags: [isOff ? "leaver" : "joiner"],
@@ -380,6 +413,11 @@ async function main() {
   }
 
   const inserted = await db.insert(schema.tickets).values(ticketRows).returning({ id: schema.tickets.id, createdAt: schema.tickets.createdAt, requesterId: schema.tickets.requesterId });
+  // Numbering continues Freshservice's shared counter: next live ticket is #229190; imported tickets keep their own numbers.
+  await db.execute(sql`create sequence if not exists ticket_number_seq`);
+  await db.execute(sql`alter sequence ticket_number_seq restart with 229190`);
+  await db.execute(sql`update tickets set ref = legacy_ref where legacy_ref is not null`);
+  await db.execute(sql`with numbered as (select id, kind, nextval('ticket_number_seq') n from (select id, kind from tickets where legacy_ref is null order by created_at, id) q) update tickets t set ref = (case numbered.kind when 'incident' then 'INC-' when 'change' then 'CHG-' else 'SR-' end) || numbered.n from numbered where numbered.id = t.id`);
   const msgRows: (typeof schema.ticketMessages.$inferInsert)[] = [];
   for (const q of messageQueue) {
     const t = inserted[q.idx]!;
@@ -473,7 +511,7 @@ async function main() {
       usageType: chance(0.9) ? "permanent" : "loaner",
       department: p.department,
       managedById: byName(pick(["Marcus Tan", "Wei Chen", "Priya Sharma"])).id,
-      managedByGroupId: gid("Endpoint & Devices"),
+      managedByGroupId: gid("Servicedesk Support"),
       assignedOn: daysAgo(between(30, 900)),
       endOfLife: old ? "2026-12-31" : null,
       vendor: m[0]!.startsWith("Mac") ? "Apple" : m[0]!.startsWith("Dell") ? "Dell" : m[0]!.startsWith("Lenovo") ? "Lenovo" : "Microsoft",
@@ -493,7 +531,7 @@ async function main() {
     });
     if (chance(0.55)) {
       const mm = pick(MODELS.mobile);
-      assetRows.push({ assetTag: `QI-MB-${String(tagNo++).padStart(4, "0")}`, name: `${p.displayName.split(" ")[0]}'s ${mm[0]}`, type: "mobile", model: mm[0], serial: `IMEI${between(100000000, 999999999)}`, os: mm[1], osVersion: mm[2], ownerId: p.id, status: "in_use", compliance: chance(0.9) ? "compliant" : "unknown", source: "intune", lastSeenAt: hoursAgo(between(0, 48)), lastSeenCity: seenCity, lastSeenCountry: CITY_COUNTRY[seenCity] ?? "HK", encrypted: true, purchaseDate: `202${between(3, 6)}-05-01`, cost: String(between(700, 1400)), department: p.department, managedById: byName("Marcus Tan").id, managedByGroupId: gid("Endpoint & Devices"), assignedOn: daysAgo(between(30, 700)), acknowledgedAt: chance(0.85) ? daysAgo(between(20, 600)) : null, vendor: mm[0]!.startsWith("iPhone") ? "Apple" : "Samsung" });
+      assetRows.push({ assetTag: `QI-MB-${String(tagNo++).padStart(4, "0")}`, name: `${p.displayName.split(" ")[0]}'s ${mm[0]}`, type: "mobile", model: mm[0], serial: `IMEI${between(100000000, 999999999)}`, os: mm[1], osVersion: mm[2], ownerId: p.id, status: "in_use", compliance: chance(0.9) ? "compliant" : "unknown", source: "intune", lastSeenAt: hoursAgo(between(0, 48)), lastSeenCity: seenCity, lastSeenCountry: CITY_COUNTRY[seenCity] ?? "HK", encrypted: true, purchaseDate: `202${between(3, 6)}-05-01`, cost: String(between(700, 1400)), department: p.department, managedById: byName("Marcus Tan").id, managedByGroupId: gid("Servicedesk Support"), assignedOn: daysAgo(between(30, 700)), acknowledgedAt: chance(0.85) ? daysAgo(between(20, 600)) : null, vendor: mm[0]!.startsWith("iPhone") ? "Apple" : "Samsung" });
     }
   }
   for (let i = 0; i < 14; i++) {
@@ -534,17 +572,17 @@ async function main() {
 
   // ---------- Service catalogue ----------
   await db.insert(schema.services).values([
-    { slug: "report-issue", name: "Report an issue", tagline: "Something is broken or not working as it should", icon: "alert-circle", kind: "incident", groupId: gid("Service Desk"), defaultPriority: "medium", eta: "First reply within 4 business hours", popular: true, fields: [{ key: "what", label: "What is happening?", type: "textarea", required: true, help: "What you were doing, what you expected, what happened instead." }, { key: "since", label: "Since when?", type: "select", options: ["Just now", "Today", "A few days", "Over a week"] }, { key: "blocking", label: "Is this stopping you from working?", type: "toggle" }] },
-    { slug: "access-request", name: "Request access", tagline: "Get into a system, folder, mailbox or group", icon: "key-round", kind: "access", groupId: gid("Identity & Access"), defaultPriority: "medium", eta: "Usually same business day after approval", popular: true, fields: [{ key: "what", label: "What do you need access to?", type: "text", required: true, help: "Name it the way you know it — e.g. 'Finance shared drive', 'Salesforce reports'. We will map it." }, { key: "like", label: "Same access as a colleague?", type: "person", help: "Pick someone who already has what you need." }, { key: "why", label: "Why do you need it?", type: "textarea", required: true }] },
-    { slug: "new-starter", name: "New starter", tagline: "Everything a new colleague needs, ready before day one", icon: "user-plus", kind: "onboarding", groupId: gid("Identity & Access"), defaultPriority: "high", eta: "Account ready 5 working days before joining", popular: true, fields: [{ key: "name", label: "Full name", type: "text", required: true }, { key: "join", label: "Start date", type: "date", required: true }, { key: "title", label: "Job title", type: "text", required: true }, { key: "dept", label: "Department", type: "select", required: true, options: DEPARTMENTS }, { key: "office", label: "Office", type: "select", required: true, options: OFFICES }, { key: "like", label: "Same access as", type: "person", required: true, help: "Clone access from someone in the same role." }, { key: "laptop", label: "Laptop preference", type: "select", options: ["Standard Windows", "MacBook", "No laptop needed"] }] },
-    { slug: "leaver", name: "Leaver", tagline: "Schedule a secure, complete offboarding", icon: "user-minus", kind: "offboarding", groupId: gid("Identity & Access"), defaultPriority: "high", eta: "Access removed on last day, HR notified", fields: [{ key: "who", label: "Who is leaving?", type: "person", required: true }, { key: "last", label: "Last working day", type: "date", required: true }, { key: "mailbox", label: "Mailbox handling", type: "select", options: ["Forward to manager", "Auto-reply only", "Delete after 30 days"] }] },
-    { slug: "hardware", name: "Hardware & equipment", tagline: "Laptop, monitor, phone, docking station, headset", icon: "laptop", kind: "request", groupId: gid("Endpoint & Devices"), defaultPriority: "medium", eta: "3–5 working days if in stock", popular: true, fields: [{ key: "item", label: "What do you need?", type: "select", required: true, options: ["Laptop", "Monitor", "Mobile phone", "Docking station", "Headset", "Keyboard & mouse", "Other"] }, { key: "why", label: "Reason", type: "textarea", required: true }, { key: "cc", label: "Cost centre", type: "text" }] },
-    { slug: "software", name: "Software & licences", tagline: "Install an app or get a licence assigned", icon: "package", kind: "request", groupId: gid("Service Desk"), defaultPriority: "low", eta: "Same business day for catalogue apps", fields: [{ key: "app", label: "Application", type: "text", required: true }, { key: "why", label: "What will you use it for?", type: "textarea" }] },
-    { slug: "mobile", name: "Mobile & telephony", tagline: "SIM, roaming, phone replacement", icon: "smartphone", kind: "request", groupId: gid("Endpoint & Devices"), defaultPriority: "medium", eta: "1–2 working days", fields: [{ key: "need", label: "What do you need?", type: "select", required: true, options: ["Roaming activation", "New SIM", "Replacement phone", "Number transfer"] }, { key: "dates", label: "Travel dates (if roaming)", type: "text" }] },
-    { slug: "security", name: "Report something suspicious", tagline: "Phishing, lost device, unusual activity", icon: "shield-alert", kind: "incident", groupId: gid("Service Desk"), defaultPriority: "urgent", eta: "Immediate triage, 24×7", fields: [{ key: "what", label: "What happened?", type: "textarea", required: true }, { key: "clicked", label: "Did you click a link or enter a password?", type: "toggle" }] },
-    { slug: "guest-wifi", name: "Guest Wi-Fi", tagline: "Temporary network access for visitors", icon: "wifi", kind: "request", groupId: gid("Network & Infrastructure"), defaultPriority: "low", eta: "Within the hour", fields: [{ key: "names", label: "Visitor names", type: "textarea", required: true }, { key: "from", label: "From", type: "date", required: true }, { key: "to", label: "To", type: "date", required: true }] },
-    { slug: "project-request", name: "IT project work request", tagline: "Something bigger than a ticket — scoped, prioritised, tracked on the grid", icon: "kanban", kind: "request", groupId: gid("Service Desk"), defaultPriority: "medium", eta: "Reviewed at the weekly prioritisation", fields: [{ key: "title", label: "What do you want to achieve?", type: "text", required: true }, { key: "why", label: "Why does it matter, for whom?", type: "textarea", required: true }, { key: "when", label: "Needed by", type: "date" }, { key: "sponsor", label: "Sponsor", type: "person" }] },
-    { slug: "other", name: "Something else", tagline: "Not sure where it fits? Start here.", icon: "message-circle", kind: "request", groupId: gid("Service Desk"), defaultPriority: "low", eta: "First reply within one business day", fields: [{ key: "what", label: "Tell us what you need", type: "textarea", required: true }] },
+    { slug: "report-issue", name: "Report an issue", tagline: "Something is broken or not working as it should", icon: "alert-circle", kind: "incident", groupId: gid("Servicedesk Support"), defaultPriority: "medium", eta: "First reply within 4 business hours", popular: true, fields: [{ key: "what", label: "What is happening?", type: "textarea", required: true, help: "What you were doing, what you expected, what happened instead." }, { key: "since", label: "Since when?", type: "select", options: ["Just now", "Today", "A few days", "Over a week"] }, { key: "blocking", label: "Is this stopping you from working?", type: "toggle" }] },
+    { slug: "access-request", name: "Request access", tagline: "Get into a system, folder, mailbox or group", icon: "key-round", kind: "access", groupId: gid("Security Operations Centre"), defaultPriority: "medium", eta: "Usually same business day after approval", popular: true, fields: [{ key: "what", label: "What do you need access to?", type: "text", required: true, help: "Name it the way you know it — e.g. 'Finance shared drive', 'Salesforce reports'. We will map it." }, { key: "like", label: "Same access as a colleague?", type: "person", help: "Pick someone who already has what you need." }, { key: "why", label: "Why do you need it?", type: "textarea", required: true }] },
+    { slug: "new-starter", name: "New starter", tagline: "Everything a new colleague needs, ready before day one", icon: "user-plus", kind: "onboarding", groupId: gid("Security Operations Centre"), defaultPriority: "high", eta: "Account ready 5 working days before joining", popular: true, fields: [{ key: "name", label: "Full name", type: "text", required: true }, { key: "join", label: "Start date", type: "date", required: true }, { key: "title", label: "Job title", type: "text", required: true }, { key: "dept", label: "Department", type: "select", required: true, options: DEPARTMENTS }, { key: "office", label: "Office", type: "select", required: true, options: OFFICES }, { key: "like", label: "Same access as", type: "person", required: true, help: "Clone access from someone in the same role." }, { key: "laptop", label: "Laptop preference", type: "select", options: ["Standard Windows", "MacBook", "No laptop needed"] }] },
+    { slug: "leaver", name: "Leaver", tagline: "Schedule a secure, complete offboarding", icon: "user-minus", kind: "offboarding", groupId: gid("Security Operations Centre"), defaultPriority: "high", eta: "Access removed on last day, HR notified", fields: [{ key: "who", label: "Who is leaving?", type: "person", required: true }, { key: "last", label: "Last working day", type: "date", required: true }, { key: "mailbox", label: "Mailbox handling", type: "select", options: ["Forward to manager", "Auto-reply only", "Delete after 30 days"] }] },
+    { slug: "hardware", name: "Hardware & equipment", tagline: "Laptop, monitor, phone, docking station, headset", icon: "laptop", kind: "request", groupId: gid("Servicedesk Support"), defaultPriority: "medium", eta: "3–5 working days if in stock", popular: true, fields: [{ key: "item", label: "What do you need?", type: "select", required: true, options: ["Laptop", "Monitor", "Mobile phone", "Docking station", "Headset", "Keyboard & mouse", "Other"] }, { key: "why", label: "Reason", type: "textarea", required: true }, { key: "cc", label: "Cost centre", type: "text" }] },
+    { slug: "software", name: "Software & licences", tagline: "Install an app or get a licence assigned", icon: "package", kind: "request", groupId: gid("Servicedesk Support"), defaultPriority: "low", eta: "Same business day for catalogue apps", fields: [{ key: "app", label: "Application", type: "text", required: true }, { key: "why", label: "What will you use it for?", type: "textarea" }] },
+    { slug: "mobile", name: "Mobile & telephony", tagline: "SIM, roaming, phone replacement", icon: "smartphone", kind: "request", groupId: gid("Servicedesk Support"), defaultPriority: "medium", eta: "1–2 working days", fields: [{ key: "need", label: "What do you need?", type: "select", required: true, options: ["Roaming activation", "New SIM", "Replacement phone", "Number transfer"] }, { key: "dates", label: "Travel dates (if roaming)", type: "text" }] },
+    { slug: "security", name: "Report something suspicious", tagline: "Phishing, lost device, unusual activity", icon: "shield-alert", kind: "incident", groupId: gid("Servicedesk Support"), defaultPriority: "urgent", eta: "Immediate triage, 24×7", fields: [{ key: "what", label: "What happened?", type: "textarea", required: true }, { key: "clicked", label: "Did you click a link or enter a password?", type: "toggle" }] },
+    { slug: "guest-wifi", name: "Guest Wi-Fi", tagline: "Temporary network access for visitors", icon: "wifi", kind: "request", groupId: gid("Cloud Infrastructure Support"), defaultPriority: "low", eta: "Within the hour", fields: [{ key: "names", label: "Visitor names", type: "textarea", required: true }, { key: "from", label: "From", type: "date", required: true }, { key: "to", label: "To", type: "date", required: true }] },
+    { slug: "project-request", name: "IT project work request", tagline: "Something bigger than a ticket — scoped, prioritised, tracked on the grid", icon: "kanban", kind: "request", groupId: gid("Servicedesk Support"), defaultPriority: "medium", eta: "Reviewed at the weekly prioritisation", fields: [{ key: "title", label: "What do you want to achieve?", type: "text", required: true }, { key: "why", label: "Why does it matter, for whom?", type: "textarea", required: true }, { key: "when", label: "Needed by", type: "date" }, { key: "sponsor", label: "Sponsor", type: "person" }] },
+    { slug: "other", name: "Something else", tagline: "Not sure where it fits? Start here.", icon: "message-circle", kind: "request", groupId: gid("Servicedesk Support"), defaultPriority: "low", eta: "First reply within one business day", fields: [{ key: "what", label: "Tell us what you need", type: "textarea", required: true }] },
   ]);
 
   // ---------- Onboardings, access grants ----------
@@ -553,18 +591,18 @@ async function main() {
       ? [
           { key: "hr-confirm", label: "HR confirms last day", owner: "HR", status: "done", dueOffsetDays: -10 },
           { key: "manager-handover", label: "Manager confirms handover & mailbox handling", owner: "Manager", status: "done", dueOffsetDays: -5 },
-          { key: "devices", label: "Devices returned and wiped", owner: "Endpoint & Devices", status: "in_progress", dueOffsetDays: 0 },
-          { key: "disable", label: "Disable sign-in, revoke sessions", owner: "Identity & Access", status: "todo", dueOffsetDays: 0 },
-          { key: "groups", label: "Remove 9 access grants", owner: "Identity & Access", status: "todo", dueOffsetDays: 0 },
-          { key: "licences", label: "Reassign 3 licences", owner: "Identity & Access", status: "todo", dueOffsetDays: 1 },
+          { key: "devices", label: "Devices returned and wiped", owner: "Servicedesk Support", status: "in_progress", dueOffsetDays: 0 },
+          { key: "disable", label: "Disable sign-in, revoke sessions", owner: "Security Operations Centre", status: "todo", dueOffsetDays: 0 },
+          { key: "groups", label: "Remove 9 access grants", owner: "Security Operations Centre", status: "todo", dueOffsetDays: 0 },
+          { key: "licences", label: "Reassign 3 licences", owner: "Security Operations Centre", status: "todo", dueOffsetDays: 1 },
           { key: "hr-notify", label: "Notify HR of completion", owner: "TicketFly", status: "todo", dueOffsetDays: 1 },
         ]
       : [
           { key: "hr-request", label: "HR raises new starter", owner: "HR", status: "done", dueOffsetDays: -15 },
-          { key: "clone", label: "Clone access from reference colleague", owner: "Identity & Access", status: "done", dueOffsetDays: -7 },
-          { key: "account", label: "Create Entra account", owner: "Identity & Access", status: "done", dueOffsetDays: -5 },
-          { key: "licences", label: "Assign licences (M365 E3, Defender, Adobe Acrobat)", owner: "Identity & Access", status: "in_progress", dueOffsetDays: -5 },
-          { key: "laptop", label: "Prepare and ship laptop", owner: "Endpoint & Devices", status: "in_progress", dueOffsetDays: -3 },
+          { key: "clone", label: "Clone access from reference colleague", owner: "Security Operations Centre", status: "done", dueOffsetDays: -7 },
+          { key: "account", label: "Create Entra account", owner: "Security Operations Centre", status: "done", dueOffsetDays: -5 },
+          { key: "licences", label: "Assign licences (M365 E3, Defender, Adobe Acrobat)", owner: "Security Operations Centre", status: "in_progress", dueOffsetDays: -5 },
+          { key: "laptop", label: "Prepare and ship laptop", owner: "Servicedesk Support", status: "in_progress", dueOffsetDays: -3 },
           { key: "manager-brief", label: "Manager confirms first-week plan", owner: "Manager", status: "todo", dueOffsetDays: -2 },
           { key: "activate", label: "Day-one activation & welcome pack", owner: "TicketFly", status: "todo", dueOffsetDays: 0 },
         ];
@@ -677,10 +715,10 @@ async function main() {
   const problemRows = await db
     .insert(schema.problems)
     .values([
-      { title: "VPN drops for remote users after Cisco Secure Client 5.1.9", description: "Multiple users report the tunnel dropping every 20–40 minutes since the client auto-updated. Reproducible on Windows 11 24H2 with Wi-Fi 6E adapters.", status: "known_error", priority: "high", impact: "high", assigneeId: byName("Daniel Lim").id, groupId: gid("Network & Infrastructure"), categoryId: cat("Network"), rootCause: "DTLS keepalive regression in 5.1.9 when the adapter enters power-save.", workaround: "Disable adapter power management, or pin client 5.1.6 via Intune ring 'Stable'.", createdAt: daysAgo(9), updatedAt: hoursAgo(5) },
-      { title: "Outlook repeatedly prompts for credentials on shared mailboxes", description: "Users with 3+ shared mailboxes get modern-auth prompts every few hours.", status: "open", priority: "medium", impact: "medium", assigneeId: byName("Priya Sharma").id, groupId: gid("Service Desk"), categoryId: cat("Email & Collaboration"), workaround: "Remove and re-add the shared mailbox; clear Credential Manager entries.", createdAt: daysAgo(14), updatedAt: daysAgo(1) },
-      { title: "Printer 12/F offline after firmware update", description: "HP MFP on 12/F loses network after the vendor's July firmware; recurs after every restart.", status: "resolved", priority: "medium", impact: "low", assigneeId: byName("Wei Chen").id, groupId: gid("Service Desk"), categoryId: cat("Printing"), rootCause: "Firmware enabled IPv6-only discovery; DHCPv6 not offered on that VLAN.", permanentFix: "Static IPv4 + firmware rollback; vendor case open.", createdAt: daysAgo(40), updatedAt: daysAgo(6), resolvedAt: daysAgo(6) },
-      { title: "Adobe Acrobat licence expired message for named users", description: "Named-user licences show as expired despite active seats in the admin console.", status: "open", priority: "low", impact: "low", assigneeId: byName("Siti Abdullah").id, groupId: gid("Identity & Access"), categoryId: cat("Licences"), createdAt: daysAgo(3), updatedAt: hoursAgo(20) },
+      { title: "VPN drops for remote users after Cisco Secure Client 5.1.9", description: "Multiple users report the tunnel dropping every 20–40 minutes since the client auto-updated. Reproducible on Windows 11 24H2 with Wi-Fi 6E adapters.", status: "known_error", priority: "high", impact: "high", assigneeId: byName("Daniel Lim").id, groupId: gid("Cloud Infrastructure Support"), categoryId: cat("Network"), rootCause: "DTLS keepalive regression in 5.1.9 when the adapter enters power-save.", workaround: "Disable adapter power management, or pin client 5.1.6 via Intune ring 'Stable'.", createdAt: daysAgo(9), updatedAt: hoursAgo(5) },
+      { title: "Outlook repeatedly prompts for credentials on shared mailboxes", description: "Users with 3+ shared mailboxes get modern-auth prompts every few hours.", status: "open", priority: "medium", impact: "medium", assigneeId: byName("Priya Sharma").id, groupId: gid("Servicedesk Support"), categoryId: cat("Email & Collaboration"), workaround: "Remove and re-add the shared mailbox; clear Credential Manager entries.", createdAt: daysAgo(14), updatedAt: daysAgo(1) },
+      { title: "Printer 12/F offline after firmware update", description: "HP MFP on 12/F loses network after the vendor's July firmware; recurs after every restart.", status: "resolved", priority: "medium", impact: "low", assigneeId: byName("Wei Chen").id, groupId: gid("Servicedesk Support"), categoryId: cat("Printing"), rootCause: "Firmware enabled IPv6-only discovery; DHCPv6 not offered on that VLAN.", permanentFix: "Static IPv4 + firmware rollback; vendor case open.", createdAt: daysAgo(40), updatedAt: daysAgo(6), resolvedAt: daysAgo(6) },
+      { title: "Adobe Acrobat licence expired message for named users", description: "Named-user licences show as expired despite active seats in the admin console.", status: "open", priority: "low", impact: "low", assigneeId: byName("Siti Abdullah").id, groupId: gid("Security Operations Centre"), categoryId: cat("Licences"), createdAt: daysAgo(3), updatedAt: hoursAgo(20) },
     ])
     .returning({ id: schema.problems.id });
   const pi: (typeof schema.problemIncidents.$inferInsert)[] = [];
@@ -701,12 +739,12 @@ async function main() {
   const changeRows = await db
     .insert(schema.changes)
     .values([
-      { title: "VPN gateway firmware upgrade", description: "Upgrade both HK ASA gateways to 9.20.3 during the Saturday window.", reason: "Vendor fix for DTLS keepalive regression (PRB VPN drops).", type: "normal", status: "awaiting_approval", risk: "medium", impact: "high", priority: "high", requesterId: byName("Daniel Lim").id, assigneeId: byName("Daniel Lim").id, groupId: gid("Network & Infrastructure"), plannedStart: new Date("2026-08-30T22:00:00+08:00"), plannedEnd: new Date("2026-08-31T01:00:00+08:00"), rollbackPlan: "Boot previous image from flash; 15 min.", testPlan: "Tunnel from HK, KL and Dubai; 30-minute soak.", approvals: approvers(["Nada Haddad", "Ked Mardemootoo"]), createdAt: daysAgo(5), updatedAt: hoursAgo(8) },
-      { title: "Pin Cisco Secure Client 5.1.6 via Intune ring Stable", description: "Roll back the client on all managed Windows laptops until the gateway fix lands.", type: "standard", status: "in_progress", risk: "low", impact: "medium", priority: "high", requesterId: byName("Daniel Lim").id, assigneeId: byName("Marcus Tan").id, groupId: gid("Endpoint & Devices"), plannedStart: daysAgo(2), plannedEnd: daysAgo(-1), rollbackPlan: "Remove the assignment; clients self-update.", approvals: [], affectedAssetIds: [], createdAt: daysAgo(3), updatedAt: hoursAgo(3) },
-      { title: "Enable Windows Hello for Business for Finance", description: "Policy rollout to the Finance dynamic group; 60 devices.", type: "normal", status: "approved", risk: "low", impact: "medium", priority: "medium", requesterId: byName("Siti Abdullah").id, assigneeId: byName("Marcus Tan").id, groupId: gid("Endpoint & Devices"), plannedStart: daysAgo(-4), plannedEnd: daysAgo(-4), approvals: approvers(["Nada Haddad"], "approved"), releaseId: rel[0]!.id, createdAt: daysAgo(8), updatedAt: daysAgo(1) },
-      { title: "Emergency: revoke compromised service account", description: "Defender flagged credential theft on svc-backup; rotate and re-scope.", type: "emergency", status: "completed", risk: "high", impact: "high", priority: "urgent", requesterId: byName("Ked Mardemootoo").id, assigneeId: byName("Siti Abdullah").id, groupId: gid("Identity & Access"), plannedStart: daysAgo(6, 2), plannedEnd: daysAgo(6), approvals: approvers(["Nada Haddad"], "approved"), createdAt: daysAgo(6, 3), updatedAt: daysAgo(6), completedAt: daysAgo(6) },
-      { title: "Replace core switch HK 12/F", description: "Swap Catalyst 9300 stack; requires floor outage.", type: "normal", status: "planning", risk: "high", impact: "high", priority: "medium", requesterId: byName("Daniel Lim").id, assigneeId: byName("Daniel Lim").id, groupId: gid("Network & Infrastructure"), plannedStart: daysAgo(-24), plannedEnd: daysAgo(-24, -6), rollbackPlan: "Re-rack old stack; config backup on TFTP.", approvals: [], releaseId: rel[1]!.id, createdAt: daysAgo(2), updatedAt: hoursAgo(30) },
-      { title: "August patch Tuesday deployment", description: "Ring 0 → 1 → 2 over 5 days.", type: "standard", status: "closed", risk: "low", impact: "medium", priority: "medium", requesterId: byName("Marcus Tan").id, assigneeId: byName("Marcus Tan").id, groupId: gid("Endpoint & Devices"), plannedStart: daysAgo(13), plannedEnd: daysAgo(8), approvals: [], releaseId: rel[2]!.id, createdAt: daysAgo(15), updatedAt: daysAgo(8), completedAt: daysAgo(8) },
+      { title: "VPN gateway firmware upgrade", description: "Upgrade both HK ASA gateways to 9.20.3 during the Saturday window.", reason: "Vendor fix for DTLS keepalive regression (PRB VPN drops).", type: "normal", status: "awaiting_approval", risk: "medium", impact: "high", priority: "high", requesterId: byName("Daniel Lim").id, assigneeId: byName("Daniel Lim").id, groupId: gid("Cloud Infrastructure Support"), plannedStart: new Date("2026-08-30T22:00:00+08:00"), plannedEnd: new Date("2026-08-31T01:00:00+08:00"), rollbackPlan: "Boot previous image from flash; 15 min.", testPlan: "Tunnel from HK, KL and Dubai; 30-minute soak.", approvals: approvers(["Nada Haddad", "Ked Mardemootoo"]), createdAt: daysAgo(5), updatedAt: hoursAgo(8) },
+      { title: "Pin Cisco Secure Client 5.1.6 via Intune ring Stable", description: "Roll back the client on all managed Windows laptops until the gateway fix lands.", type: "standard", status: "in_progress", risk: "low", impact: "medium", priority: "high", requesterId: byName("Daniel Lim").id, assigneeId: byName("Marcus Tan").id, groupId: gid("Servicedesk Support"), plannedStart: daysAgo(2), plannedEnd: daysAgo(-1), rollbackPlan: "Remove the assignment; clients self-update.", approvals: [], affectedAssetIds: [], createdAt: daysAgo(3), updatedAt: hoursAgo(3) },
+      { title: "Enable Windows Hello for Business for Finance", description: "Policy rollout to the Finance dynamic group; 60 devices.", type: "normal", status: "approved", risk: "low", impact: "medium", priority: "medium", requesterId: byName("Siti Abdullah").id, assigneeId: byName("Marcus Tan").id, groupId: gid("Servicedesk Support"), plannedStart: daysAgo(-4), plannedEnd: daysAgo(-4), approvals: approvers(["Nada Haddad"], "approved"), releaseId: rel[0]!.id, createdAt: daysAgo(8), updatedAt: daysAgo(1) },
+      { title: "Emergency: revoke compromised service account", description: "Defender flagged credential theft on svc-backup; rotate and re-scope.", type: "emergency", status: "completed", risk: "high", impact: "high", priority: "urgent", requesterId: byName("Ked Mardemootoo").id, assigneeId: byName("Siti Abdullah").id, groupId: gid("Security Operations Centre"), plannedStart: daysAgo(6, 2), plannedEnd: daysAgo(6), approvals: approvers(["Nada Haddad"], "approved"), createdAt: daysAgo(6, 3), updatedAt: daysAgo(6), completedAt: daysAgo(6) },
+      { title: "Replace core switch HK 12/F", description: "Swap Catalyst 9300 stack; requires floor outage.", type: "normal", status: "planning", risk: "high", impact: "high", priority: "medium", requesterId: byName("Daniel Lim").id, assigneeId: byName("Daniel Lim").id, groupId: gid("Cloud Infrastructure Support"), plannedStart: daysAgo(-24), plannedEnd: daysAgo(-24, -6), rollbackPlan: "Re-rack old stack; config backup on TFTP.", approvals: [], releaseId: rel[1]!.id, createdAt: daysAgo(2), updatedAt: hoursAgo(30) },
+      { title: "August patch Tuesday deployment", description: "Ring 0 → 1 → 2 over 5 days.", type: "standard", status: "closed", risk: "low", impact: "medium", priority: "medium", requesterId: byName("Marcus Tan").id, assigneeId: byName("Marcus Tan").id, groupId: gid("Servicedesk Support"), plannedStart: daysAgo(13), plannedEnd: daysAgo(8), approvals: [], releaseId: rel[2]!.id, createdAt: daysAgo(15), updatedAt: daysAgo(8), completedAt: daysAgo(8) },
     ])
     .returning({ id: schema.changes.id });
   await db.update(schema.problems).set({ changeId: changeRows[0]!.id }).where(sql`id = ${problemRows[0]!.id}`);
@@ -826,6 +864,8 @@ async function main() {
     { kind: "request", subject: "Expense claim query — travel to KL", description: "Claim EXP-4471 stuck in review.", status: "in_progress", priority: "low", requesterId: financeReq[1]?.id ?? requesters[1]!.id, assigneeId: byName("Priya Sharma").id, source: "email", workspace: "finance", createdAt: daysAgo(1), updatedAt: hoursAgo(3) },
     { kind: "request", subject: "Project work request: Customer portal redesign discovery", description: "Scope a 6-week discovery with Product.", status: "open", priority: "medium", requesterId: requesters[5]!.id, source: "portal", workspace: "pwr", createdAt: daysAgo(2), updatedAt: daysAgo(2) },
   ]);
+
+  await db.execute(sql`update tickets set ref = (case kind when 'incident' then 'INC-' when 'change' then 'CHG-' else 'SR-' end) || nextval('ticket_number_seq') where ref = ''`);
 
   // ---------- Automation rules (code-defined; this is enablement + history) ----------
   await db.insert(schema.automationRules).values([

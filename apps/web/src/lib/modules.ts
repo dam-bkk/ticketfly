@@ -28,7 +28,7 @@ export async function getProblem(id: number) {
   const [row] = await db.select({ p, assignee: personName(p.assigneeId), group: schema.groups.name, category: schema.categories.name }).from(p).leftJoin(schema.groups, eq(schema.groups.id, p.groupId)).leftJoin(schema.categories, eq(schema.categories.id, p.categoryId)).where(eq(p.id, id)).limit(1);
   if (!row) return null;
   const incidents = await db
-    .select({ id: schema.tickets.id, subject: schema.tickets.subject, status: schema.tickets.status, priority: schema.tickets.priority, createdAt: schema.tickets.createdAt, requester: schema.people.displayName, legacyRef: schema.tickets.legacyRef })
+    .select({ id: schema.tickets.id, ref: schema.tickets.ref, subject: schema.tickets.subject, status: schema.tickets.status, priority: schema.tickets.priority, createdAt: schema.tickets.createdAt, requester: schema.people.displayName, legacyRef: schema.tickets.legacyRef })
     .from(schema.problemIncidents)
     .innerJoin(schema.tickets, eq(schema.tickets.id, schema.problemIncidents.ticketId))
     .leftJoin(schema.people, eq(schema.people.id, schema.tickets.requesterId))

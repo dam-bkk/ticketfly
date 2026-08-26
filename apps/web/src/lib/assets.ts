@@ -75,7 +75,7 @@ export async function getAssetFull(id: number) {
     .leftJoin(schema.people, eq(schema.people.id, schema.assetAssignments.personId))
     .where(eq(schema.assetAssignments.assetId, id))
     .orderBy(desc(schema.assetAssignments.assignedAt));
-  const tickets = row.owner ? await db.select({ id: schema.tickets.id, subject: schema.tickets.subject, status: schema.tickets.status, kind: schema.tickets.kind, createdAt: schema.tickets.createdAt, legacyRef: schema.tickets.legacyRef }).from(schema.tickets).where(eq(schema.tickets.requesterId, row.owner.id)).orderBy(desc(schema.tickets.createdAt)).limit(8) : [];
+  const tickets = row.owner ? await db.select({ id: schema.tickets.id, ref: schema.tickets.ref, subject: schema.tickets.subject, status: schema.tickets.status, kind: schema.tickets.kind, createdAt: schema.tickets.createdAt, legacyRef: schema.tickets.legacyRef }).from(schema.tickets).where(eq(schema.tickets.requesterId, row.owner.id)).orderBy(desc(schema.tickets.createdAt)).limit(8) : [];
   const activity = await db.select().from(schema.activityLog).where(and(eq(schema.activityLog.targetType, "asset"), eq(schema.activityLog.targetId, String(id)))).orderBy(desc(schema.activityLog.ts)).limit(30);
   const contracts = await db.select().from(schema.contracts).where(row.a.vendor ? ilike(schema.contracts.vendor, `%${row.a.vendor}%`) : sql`false`).limit(5);
   const pos = await db.select().from(schema.purchaseOrders).where(row.a.vendor ? ilike(schema.purchaseOrders.vendor, `%${row.a.vendor}%`) : sql`false`).limit(5);

@@ -94,8 +94,8 @@ const RULES: Record<string, (config: Record<string, unknown>) => Promise<string>
 
 /** One-click macros on a ticket — Freshservice "Scenario Automations", without the builder. */
 export const SCENARIOS: { key: string; label: string; description: string }[] = [
-  { key: "escalate-network", label: "Escalate to Network", description: "Move to Network & Infrastructure, set High, add a note." },
-  { key: "escalate-identity", label: "Escalate to Identity & Access", description: "Move to Identity & Access, keep priority, add a note." },
+  { key: "escalate-network", label: "Escalate to Infra", description: "Move to Cloud Infrastructure Support, set High, add a note." },
+  { key: "escalate-identity", label: "Escalate to SOC", description: "Move to the Security Operations Centre, keep priority, add a note." },
   { key: "need-info", label: "Ask for details & wait", description: "Send the details template and set Waiting on requester." },
   { key: "duplicate", label: "Resolve as duplicate", description: "Reply with the duplicate note and resolve." },
 ];

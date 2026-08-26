@@ -90,7 +90,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
                 <td className="px-3 py-2 text-ink-2">
                   {r.targetType === "ticket" ? (
                     <Link href={`/tickets/${r.targetId}`} className="font-mono text-[11.5px] hover:underline">
-                      TF-{String(r.targetId).padStart(6, "0")}
+                      ticket #{r.targetId}
                     </Link>
                   ) : (
                     <span className="font-mono text-[11.5px]">

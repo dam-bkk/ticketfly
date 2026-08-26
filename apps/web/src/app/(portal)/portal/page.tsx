@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
-import { formatTicketRef } from "@ticketfly/core";
 import { requirePrincipal } from "@/lib/auth";
 import { listServices, myRequests } from "@/lib/queries";
 import { myDevices } from "@/lib/assets";
@@ -95,7 +94,7 @@ export default async function PortalHome() {
                       <span className="block truncate text-[14px] font-medium">{r.subject}</span>
                       <span className="block text-[12.5px] text-ink-3">
                         {STATUS_LABEL[r.status]}
-                        {r.assignee ? ` · ${r.assignee} is on it` : " · waiting to be picked up"} · {formatTicketRef(r.id)}
+                        {r.assignee ? ` · ${r.assignee} is on it` : " · waiting to be picked up"} · {r.ref}
                       </span>
                     </span>
                     <span className="text-[12px] text-ink-4">{relTime(r.updatedAt)}</span>

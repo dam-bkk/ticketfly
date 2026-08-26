@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Archive, Building2, Laptop, Mail, MapPin, Smartphone, UserRound } from "lucide-react";
 import { and, asc, or, isNull } from "drizzle-orm";
-import { formatTicketRef } from "@ticketfly/core";
 import { requireStaff } from "@/lib/auth";
 import { getTicket, listAgents, listCategories, listGroups } from "@/lib/queries";
 import { longTime, relTime, shortTime, STATUS_LABEL } from "@/lib/utils";
@@ -25,7 +24,8 @@ import { eq } from "drizzle-orm";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return { title: formatTicketRef(Number(id)) };
+  const [row] = await db.select({ ref: schema.tickets.ref }).from(schema.tickets).where(eq(schema.tickets.id, Number(id))).limit(1);
+  return { title: row?.ref ?? `#${id}` };
 }
 
 export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +40,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
   const customFields = await db.select().from(schema.customFields).where(and(eq(schema.customFields.entity, "ticket"), or(isNull(schema.customFields.workspace), eq(schema.customFields.workspace, t.workspace)))).orderBy(asc(schema.customFields.position));
   void current;
   const problem = t.problemId ? (await db.select({ id: schema.problems.id, title: schema.problems.title, workaround: schema.problems.workaround, status: schema.problems.status }).from(schema.problems).where(eq(schema.problems.id, t.problemId)).limit(1))[0] ?? null : null;
-  const ref = t.legacyRef ?? formatTicketRef(t.id);
+  const ref = t.ref;
 
   return (
     <>

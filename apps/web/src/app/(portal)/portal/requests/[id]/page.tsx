@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
-import { formatTicketRef } from "@ticketfly/core";
 import { replyToTicket } from "@/app/actions";
 import { requirePrincipal } from "@/lib/auth";
 import { getTicket } from "@/lib/queries";
@@ -41,12 +40,12 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
           <span className="flex size-6 items-center justify-center rounded-full bg-ok text-white">
             <Check className="size-3.5" strokeWidth={3} />
           </span>
-          Sent. Your reference is <span className="font-mono font-medium">{formatTicketRef(t.id)}</span> — we have emailed you a copy.
+          Sent. Your reference is <span className="font-mono font-medium">{t.ref}</span> — we have emailed you a copy.
         </div>
       )}
 
       <p className="mt-6 font-mono text-[12px] text-ink-3">
-        {t.legacyRef ?? formatTicketRef(t.id)} · raised {longTime(t.createdAt)}
+        {t.ref} · raised {longTime(t.createdAt)}
       </p>
       <h1 className="mt-1 text-[26px] font-semibold leading-tight tracking-[-0.015em]" style={{ textWrap: "balance" }}>
         {t.subject}

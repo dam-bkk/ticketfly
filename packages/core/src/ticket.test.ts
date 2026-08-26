@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canTransition, formatTicketRef, isSlaPaused, nextStatuses, parseLegacyRef, parseSubjectTag, priorityFromMatrix } from "./ticket";
+import { canTransition, fallbackRef, formatTicketRef, isSlaPaused, nextStatuses, parseLegacyRef, parseSubjectTag, priorityFromMatrix, refPrefix } from "./ticket";
 
 describe("status machine", () => {
   it("allows documented transitions", () => {
@@ -34,13 +34,26 @@ describe("references", () => {
     expect(parseLegacyRef("/fs/sr-9")).toEqual({ prefix: "SR", number: 9, ref: "SR-9" });
     expect(parseLegacyRef("nothing here")).toBeNull();
   });
-  it("formats TicketFly refs", () => {
-    expect(formatTicketRef(42)).toBe("TF-000042");
-    expect(formatTicketRef(1234567)).toBe("TF-1234567");
+  it("continues the Freshservice INC-/SR- scheme", () => {
+    expect(refPrefix("incident")).toBe("INC");
+    expect(refPrefix("request")).toBe("SR");
+    expect(refPrefix("onboarding")).toBe("SR");
+    expect(refPrefix("change")).toBe("CHG");
+    expect(formatTicketRef("incident", 229190)).toBe("INC-229190");
+    expect(fallbackRef(42)).toBe("#42");
+  });
+  it("adds the new board states to the machine", () => {
+    expect(canTransition("open", "pending_approval")).toBe(true);
+    expect(canTransition("pending_approval", "in_progress")).toBe(true);
+    expect(canTransition("in_progress", "transferred")).toBe(true);
+    expect(canTransition("cancelled", "open")).toBe(true);
+    expect(canTransition("resolved", "cancelled")).toBe(false);
+    expect(isSlaPaused("pending_approval")).toBe(true);
   });
   it("parses subject tags for threading", () => {
     expect(parseSubjectTag("RE: [#tf-000042] VPN")).toBe("TF-000042");
     expect(parseSubjectTag("RE: [#INC-7] VPN")).toBe("INC-7");
+    expect(parseSubjectTag("Request for X : thing #SR-229189")).toBe("SR-229189");
     expect(parseSubjectTag("no tag")).toBeNull();
   });
 });

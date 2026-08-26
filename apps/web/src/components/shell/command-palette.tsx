@@ -9,7 +9,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { StatusDot } from "@/components/ui/pills";
 
 type Results = {
-  tickets: { id: number; legacyRef: string | null; subject: string; status: string; requester: string | null }[];
+  tickets: { id: number; ref: string; legacyRef: string | null; subject: string; status: string; requester: string | null }[];
   people: { id: number; displayName: string; jobTitle: string | null; department: string | null }[];
   assets: { id: number; name: string; assetTag: string; model: string | null }[];
 };
@@ -72,7 +72,7 @@ export function CommandPalette({ portal }: { portal?: boolean }) {
             <Command shouldFilter={false} label="Search">
               <div className="flex items-center gap-2 px-4 hairline-b">
                 <Search className="size-4 text-ink-3" />
-                <Command.Input value={q} onValueChange={setQ} autoFocus placeholder="Type a ticket number, INC reference, name, asset tag…" className="h-12 flex-1 bg-transparent text-[14px] outline-none" />
+                <Command.Input value={q} onValueChange={setQ} autoFocus placeholder="Type #SR-229189, INC-4210, a name, an asset tag…" className="h-12 flex-1 bg-transparent text-[14px] outline-none" />
                 <Kbd>esc</Kbd>
               </div>
               <Command.List className="max-h-[420px] overflow-y-auto p-2">
@@ -99,7 +99,7 @@ export function CommandPalette({ portal }: { portal?: boolean }) {
                       <Row key={t.id} onSelect={() => go(portal ? `/portal/requests/${t.id}` : `/tickets/${t.id}`)} icon={<StatusDot status={t.status} className="mx-1" />}>
                         <span className="flex min-w-0 flex-1 items-center gap-2">
                           <span className="truncate">{t.subject}</span>
-                          <span className="ml-auto shrink-0 font-mono text-[11px] text-ink-3">{t.legacyRef ?? `TF-${String(t.id).padStart(6, "0")}`}</span>
+                          <span className="ml-auto shrink-0 font-mono text-[11px] text-ink-3">{t.ref}</span>
                         </span>
                       </Row>
                     ))}

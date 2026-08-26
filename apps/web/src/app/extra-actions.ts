@@ -35,15 +35,15 @@ export async function applyScenario(ticketId: number, key: string) {
   switch (key) {
     case "escalate-network":
       fd.set("kind", "note");
-      fd.set("body", "Escalated to Network & Infrastructure for investigation.");
+      fd.set("body", "Escalated to Cloud Infrastructure Support (Infra) for investigation.");
       await replyToTicket(ticketId, fd);
-      await updateTicket(ticketId, { groupId: gid("Network & Infrastructure"), priority: "high", assigneeId: null });
+      await updateTicket(ticketId, { groupId: gid("Cloud Infrastructure Support"), priority: "high", assigneeId: null });
       break;
     case "escalate-identity":
       fd.set("kind", "note");
-      fd.set("body", "Escalated to Identity & Access.");
+      fd.set("body", "Escalated to the Security Operations Centre.");
       await replyToTicket(ticketId, fd);
-      await updateTicket(ticketId, { groupId: gid("Identity & Access"), assigneeId: null });
+      await updateTicket(ticketId, { groupId: gid("Security Operations Centre"), assigneeId: null });
       break;
     case "need-info":
       fd.set("kind", "reply");
@@ -166,4 +166,23 @@ export async function saveNotifyPrefs(fd: FormData) {
 
 export async function goToWorkspaceHome() {
   redirect("/tickets");
+}
+
+
+// ---------- Saved views (Tickets list) ----------
+export async function saveView(fd: FormData) {
+  const me = await requireStaff();
+  const name = String(fd.get("name") ?? "").trim();
+  if (!name) return;
+  let filter: unknown = {};
+  try { filter = JSON.parse(String(fd.get("filter") ?? "{}")); } catch {}
+  await db.insert(schema.savedViews).values({ ownerId: me.id, name, filter: filter as Record<string, unknown>, shared: fd.get("shared") === "on" });
+  await logActivity(me, { action: "view.save", category: "settings", targetType: "saved_view", targetId: name, after: filter });
+  revalidatePath("/tickets");
+}
+export async function deleteSavedView(id: number) {
+  const me = await requireStaff();
+  await db.delete(schema.savedViews).where(and(eq(schema.savedViews.id, id), sql`(${schema.savedViews.ownerId} = ${me.id} or ${schema.savedViews.shared} = false)`));
+  await logActivity(me, { action: "view.delete", category: "settings", targetType: "saved_view", targetId: id });
+  revalidatePath("/tickets");
 }

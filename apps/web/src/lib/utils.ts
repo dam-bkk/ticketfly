@@ -66,10 +66,13 @@ export const STATUS_LABEL: Record<string, string> = {
   open: "Open",
   pending: "Waiting on requester",
   in_progress: "Being processed",
+  pending_approval: "Pending approval",
   on_hold: "On hold",
   resolved: "Resolved",
   closed: "Closed",
+  cancelled: "Cancelled",
+  transferred: "Transferred",
 };
-export const STATUS_SHORT: Record<string, string> = { open: "Open", pending: "Waiting", in_progress: "In progress", on_hold: "On hold", resolved: "Resolved", closed: "Closed" };
+export const STATUS_SHORT: Record<string, string> = { open: "Open", pending: "Pending", in_progress: "In progress", pending_approval: "Pending approval", on_hold: "On hold", resolved: "Resolved", closed: "Closed", cancelled: "Cancelled", transferred: "Transferred" };
 export const PRIORITY_LABEL: Record<string, string> = { low: "Low", medium: "Medium", high: "High", urgent: "Urgent" };
 export const KIND_LABEL: Record<string, string> = { incident: "Incident", request: "Request", onboarding: "Onboarding", offboarding: "Offboarding", access: "Access", change: "Change" };

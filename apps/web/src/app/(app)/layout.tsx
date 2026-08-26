@@ -5,6 +5,7 @@ import { inboxCounts } from "@/lib/queries";
 import { getPrefs } from "@/lib/modules";
 import { workspaceContext } from "@/lib/workspace";
 import { Sidebar } from "@/components/shell/sidebar";
+import { ViewAsBanner } from "@/components/shell/view-as";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireStaff();
@@ -19,7 +20,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-dvh overflow-hidden">
       <Sidebar me={me} counts={{ open: c.open, mine: c.mine, atRisk: c.atRisk, onboarding: ob?.n ?? 0, approvals: extra?.approvals, tasks: extra?.tasks, alerts: extra?.alerts }} version={APP_VERSION} hidden={prefs.hiddenModules} />
-      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {me.actor && <ViewAsBanner viewing={{ displayName: me.displayName, role: me.role }} />}
+        {children}
+      </div>
     </div>
   );
 }

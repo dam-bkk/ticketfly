@@ -16,9 +16,9 @@ export async function logActivity(
 ) {
   const meta = await requestMeta();
   await db.insert(schema.activityLog).values({
-    actorId: actor?.id ?? null,
-    actorName: actor?.displayName ?? "system",
-    actorType: actor ? "user" : "system",
+    actorId: actor?.actor?.id ?? actor?.id ?? null,
+    actorName: actor?.actor ? `${actor.actor.displayName} (viewing as ${actor.displayName})` : (actor?.displayName ?? "system"),
+    actorType: actor ? (actor.actor ? "admin-view-as" : "user") : "system",
     action: entry.action,
     category: entry.category,
     targetType: entry.targetType,

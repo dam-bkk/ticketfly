@@ -16,14 +16,32 @@ export type Principal = {
   jobTitle: string | null;
   department: string | null;
   officeLocation: string | null;
+  /** Set when an admin is using "View as": the real signed-in admin. */
+  actor?: { id: number; displayName: string };
 };
 
-export async function getPrincipal(): Promise<Principal | null> {
-  const id = Number((await cookies()).get("tf_persona")?.value);
-  if (!id) return null;
+async function loadPerson(id: number) {
   const [p] = await db.select().from(schema.people).where(eq(schema.people.id, id)).limit(1);
-  if (!p) return null;
-  return { id: p.id, displayName: p.displayName, email: p.email, role: p.role, jobTitle: p.jobTitle, department: p.department, officeLocation: p.officeLocation };
+  return p ?? null;
+}
+
+/**
+ * Identity for this request. "View as" (PolyQi pattern): an admin can render the app from any person's seat;
+ * authorisation follows the viewed person, the activity log keeps the admin as the actor.
+ */
+export async function getPrincipal(): Promise<Principal | null> {
+  const jar = await cookies();
+  const id = Number(jar.get("tf_persona")?.value);
+  if (!id) return null;
+  const real = await loadPerson(id);
+  if (!real) return null;
+  const base = (p: NonNullable<typeof real>): Principal => ({ id: p.id, displayName: p.displayName, email: p.email, role: p.role, jobTitle: p.jobTitle, department: p.department, officeLocation: p.officeLocation });
+  const viewAs = Number(jar.get("tf_view_as")?.value);
+  if (viewAs && viewAs !== real.id && real.role === "admin") {
+    const target = await loadPerson(viewAs);
+    if (target) return { ...base(target), actor: { id: real.id, displayName: real.displayName } };
+  }
+  return base(real);
 }
 
 export async function requirePrincipal(): Promise<Principal> {

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { formatTicketRef } from "@ticketfly/core";
 import { requirePrincipal } from "@/lib/auth";
 import { myRequests } from "@/lib/queries";
 import { relTime, STATUS_LABEL } from "@/lib/utils";
@@ -41,7 +40,7 @@ function Group({ title, rows, empty }: { title: string; rows: Awaited<ReturnType
                   <span className="block truncate text-[14px] font-medium">{r.subject}</span>
                   <span className="block text-[12.5px] text-ink-3">
                     {STATUS_LABEL[r.status]}
-                    {r.assignee ? ` · ${r.assignee}` : ""} · {formatTicketRef(r.id)}
+                    {r.assignee ? ` · ${r.assignee}` : ""} · {r.ref}
                   </span>
                 </span>
                 <span className="text-[12px] text-ink-4">{relTime(r.updatedAt)}</span>

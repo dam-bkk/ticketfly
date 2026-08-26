@@ -1,7 +1,7 @@
 "use server";
 
 import { db, schema } from "@ticketfly/db";
-import { canTransition, isSlaPaused, type TicketStatus } from "@ticketfly/core";
+import { canTransition, formatTicketRef, isSlaPaused, type TicketStatus } from "@ticketfly/core";
 import { eq, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -129,9 +129,11 @@ export async function createRequest(slug: string, formData: FormData) {
   const headline = firstText ? answers[firstText.key]?.slice(0, 90) : "";
   const subject = service.kind === "onboarding" ? `Onboarding: ${answers.name} — ${answers.title}, ${answers.dept}` : service.kind === "offboarding" ? `Offboarding: ${answers.who}` : headline && headline.length > 8 ? headline : service.name;
   const description = service.fields.map((f) => `${f.label}: ${answers[f.key] || "—"}`).join("\n");
+  const [seq] = (await db.execute(sql`select nextval('ticket_number_seq') as n`)) as unknown as { n: number | string }[];
+  const ref = formatTicketRef(service.kind, Number(seq?.n));
   const [t] = await db
     .insert(schema.tickets)
-    .values({ kind: service.kind, subject, description, status: "open", priority: answers.blocking === "Yes" && service.defaultPriority === "medium" ? "high" : service.defaultPriority, requesterId: me.id, groupId: service.groupId, source: "portal", raw: { service: slug, answers } })
+    .values({ ref, kind: service.kind, subject, description, status: "open", priority: answers.blocking === "Yes" && service.defaultPriority === "medium" ? "high" : service.defaultPriority, requesterId: me.id, groupId: service.groupId, source: "portal", raw: { service: slug, answers } })
     .returning({ id: schema.tickets.id });
   const id = t!.id;
   await logActivity(me, { action: "ticket.create", category: "ticket", targetType: "ticket", targetId: id, after: { service: slug, kind: service.kind } });
@@ -170,4 +172,24 @@ export async function closeTicket(ticketId: number) {
   if (t.status !== "resolved") await updateTicket(ticketId, { status: "resolved" });
   await updateTicket(ticketId, { status: "closed" });
   void me;
+}
+
+
+/** "View as" — admins only. Persists until Exit; every page follows the viewed person's role. */
+export async function setViewAs(personId: number | null) {
+  const jar = await cookies();
+  const realId = Number(jar.get("tf_persona")?.value);
+  const [real] = realId ? await db.select({ role: schema.people.role, displayName: schema.people.displayName }).from(schema.people).where(eq(schema.people.id, realId)).limit(1) : [];
+  if (!real || real.role !== "admin") return;
+  if (!personId) {
+    jar.delete("tf_view_as");
+    jar.delete("tf_workspace");
+    redirect("/tickets");
+  }
+  const [target] = await db.select({ id: schema.people.id, role: schema.people.role, displayName: schema.people.displayName }).from(schema.people).where(eq(schema.people.id, personId)).limit(1);
+  if (!target) return;
+  jar.set("tf_view_as", String(personId), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 8 });
+  jar.delete("tf_workspace");
+  await logActivity({ id: realId, displayName: real.displayName, email: "", role: "admin", jobTitle: null, department: null, officeLocation: null }, { action: "auth.view_as", category: "auth", targetType: "person", targetId: personId, after: { as: target.displayName, role: target.role } });
+  redirect(target.role === "requester" || target.role === "manager" ? "/portal" : "/tickets");
 }

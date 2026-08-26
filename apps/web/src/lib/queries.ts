@@ -4,14 +4,34 @@ import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lt, or, sql } f
 import { subDays } from "date-fns";
 import { slaFor } from "./sla";
 
-export type InboxFilter = "open" | "mine" | "unassigned" | "at_risk" | "waiting" | "resolved" | "all" | "legacy";
+export type InboxFilter = "open" | "mine" | "unassigned" | "at_risk" | "waiting" | "approval" | "resolved" | "all" | "legacy";
 
-export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: string; groupId?: number; limit?: number; workspace?: string }) {
+export type AdvancedFilter = { group?: string; agent?: string; status?: string; requester?: string; department?: string; created?: string; due?: string; fr?: string; priority?: string; source?: string };
+
+export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: string; groupId?: number; limit?: number; workspace?: string; adv?: AdvancedFilter }) {
   const t = schema.tickets;
   const conds = [];
   if (opts.workspace) conds.push(eq(t.workspace, opts.workspace));
-  const openStatuses = ["open", "in_progress", "pending", "on_hold"] as const;
-  switch (opts.filter) {
+  const a = opts.adv ?? {};
+  if (a.group) conds.push(eq(t.groupId, Number(a.group)));
+  if (a.agent === "me") conds.push(eq(t.assigneeId, opts.meId));
+  else if (a.agent === "unassigned") conds.push(isNull(t.assigneeId));
+  else if (a.agent) conds.push(eq(t.assigneeId, Number(a.agent)));
+  if (a.status && a.status !== "any") conds.push(eq(t.status, a.status as never));
+  if (a.requester) conds.push(or(ilike(schema.people.displayName, `%${a.requester}%`), ilike(schema.people.email, `%${a.requester}%`))!);
+  if (a.department) conds.push(eq(schema.people.department, a.department));
+  if (a.created) conds.push(gte(t.createdAt, a.created === "today" ? new Date(new Date().setHours(0, 0, 0, 0)) : subDays(new Date(), a.created === "7d" ? 7 : a.created === "30d" ? 30 : 180)));
+  if (a.due === "overdue") conds.push(lt(t.resolutionDueAt, new Date()), inArray(t.status, ["open", "in_progress"]));
+  if (a.due === "today") conds.push(sql`${t.resolutionDueAt}::date = now()::date`);
+  if (a.due === "tomorrow") conds.push(sql`${t.resolutionDueAt}::date = (now() + interval '1 day')::date`);
+  if (a.due === "8h") conds.push(sql`${t.resolutionDueAt} between now() and now() + interval '8 hours'`);
+  if (a.fr === "overdue") conds.push(isNull(t.firstRespondedAt), lt(t.firstResponseDueAt, new Date()));
+  if (a.fr === "today") conds.push(isNull(t.firstRespondedAt), sql`${t.firstResponseDueAt}::date = now()::date`);
+  if (a.priority) conds.push(eq(t.priority, a.priority as never));
+  if (a.source) conds.push(eq(t.source, a.source as never));
+  const advActive = Object.values(a).some(Boolean);
+  const openStatuses = ["open", "in_progress", "pending", "pending_approval", "on_hold"] as const;
+  switch (advActive && !a.status ? "open" : advActive ? "all" : opts.filter) {
     case "open":
       conds.push(inArray(t.status, [...openStatuses]));
       break;
@@ -23,6 +43,9 @@ export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: s
       break;
     case "waiting":
       conds.push(inArray(t.status, ["pending", "on_hold"]));
+      break;
+    case "approval":
+      conds.push(eq(t.status, "pending_approval"));
       break;
     case "at_risk":
       conds.push(inArray(t.status, ["open", "in_progress"]), or(lt(t.resolutionDueAt, new Date(Date.now() + 24 * 3600_000)), and(isNull(t.firstRespondedAt), lt(t.firstResponseDueAt, new Date(Date.now() + 60 * 60_000))))!);
@@ -41,6 +64,7 @@ export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: s
   const rows = await db
     .select({
       id: t.id,
+      ref: t.ref,
       legacyRef: t.legacyRef,
       kind: t.kind,
       subject: t.subject,
@@ -60,6 +84,7 @@ export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: s
       assignee: sql<string | null>`(select display_name from people a where a.id = ${t.assigneeId})`,
       groupName: schema.groups.name,
       messageCount: sql<number>`(select count(*)::int from ticket_messages m where m.ticket_id = ${t.id} and m.kind <> 'system')`,
+      requesterResponded: sql<boolean>`coalesce((select m.author_id = ${t.requesterId} from ticket_messages m where m.ticket_id = ${t.id} and m.kind <> 'system' order by m.created_at desc limit 1), false)`,
     })
     .from(t)
     .leftJoin(schema.people, eq(schema.people.id, t.requesterId))
@@ -75,7 +100,8 @@ export async function inboxCounts(meId: number, workspace?: string) {
   const open = ["open", "in_progress", "pending", "on_hold"] as const;
   const [row] = await db
     .select({
-      open: sql<number>`count(*) filter (where ${t.status} in ('open','in_progress','pending','on_hold'))::int`,
+      open: sql<number>`count(*) filter (where ${t.status} in ('open','in_progress','pending','pending_approval','on_hold'))::int`,
+      approval: sql<number>`count(*) filter (where ${t.status} = 'pending_approval')::int`,
       mine: sql<number>`count(*) filter (where ${t.assigneeId} = ${meId} and ${t.status} in ('open','in_progress','pending','on_hold'))::int`,
       unassigned: sql<number>`count(*) filter (where ${t.assigneeId} is null and ${t.status} in ('open','in_progress','pending','on_hold'))::int`,
       waiting: sql<number>`count(*) filter (where ${t.status} in ('pending','on_hold'))::int`,
@@ -115,7 +141,7 @@ export async function getTicket(id: number) {
   const devices = row.requester ? await db.select().from(schema.assets).where(and(eq(schema.assets.ownerId, row.requester.id), inArray(schema.assets.type, ["laptop", "desktop", "mobile", "tablet"]))) : [];
   const recent = row.requester
     ? await db
-        .select({ id: t.id, subject: t.subject, status: t.status, createdAt: t.createdAt, legacyRef: t.legacyRef })
+        .select({ id: t.id, ref: t.ref, subject: t.subject, status: t.status, createdAt: t.createdAt, legacyRef: t.legacyRef })
         .from(t)
         .where(and(eq(t.requesterId, row.requester.id), sql`${t.id} <> ${id}`))
         .orderBy(desc(t.createdAt))
@@ -126,7 +152,7 @@ export async function getTicket(id: number) {
 }
 
 export async function getTicketByLegacyRef(ref: string) {
-  const [row] = await db.select({ id: schema.tickets.id }).from(schema.tickets).where(eq(schema.tickets.legacyRef, ref.toUpperCase())).limit(1);
+  const [row] = await db.select({ id: schema.tickets.id }).from(schema.tickets).where(or(eq(schema.tickets.legacyRef, ref.toUpperCase()), eq(schema.tickets.ref, ref.toUpperCase()))).limit(1);
   return row ?? null;
 }
 
@@ -274,7 +300,7 @@ export async function getPerson(id: number) {
   const manager = p.managerId ? (await db.select({ id: schema.people.id, displayName: schema.people.displayName }).from(schema.people).where(eq(schema.people.id, p.managerId)).limit(1))[0] ?? null : null;
   const devices = await db.select().from(schema.assets).where(eq(schema.assets.ownerId, id));
   const grants = await db.select().from(schema.accessGrants).where(eq(schema.accessGrants.personId, id)).orderBy(asc(schema.accessGrants.system));
-  const tickets = await db.select({ id: schema.tickets.id, subject: schema.tickets.subject, status: schema.tickets.status, createdAt: schema.tickets.createdAt, legacyRef: schema.tickets.legacyRef, kind: schema.tickets.kind }).from(schema.tickets).where(eq(schema.tickets.requesterId, id)).orderBy(desc(schema.tickets.createdAt)).limit(10);
+  const tickets = await db.select({ id: schema.tickets.id, ref: schema.tickets.ref, subject: schema.tickets.subject, status: schema.tickets.status, createdAt: schema.tickets.createdAt, legacyRef: schema.tickets.legacyRef, kind: schema.tickets.kind }).from(schema.tickets).where(eq(schema.tickets.requesterId, id)).orderBy(desc(schema.tickets.createdAt)).limit(10);
   const [onboarding] = await db.select().from(schema.onboardings).where(eq(schema.onboardings.personId, id)).limit(1);
   const cloneFrom = onboarding?.cloneFromPersonId ? (await db.select({ id: schema.people.id, displayName: schema.people.displayName }).from(schema.people).where(eq(schema.people.id, onboarding.cloneFromPersonId)).limit(1))[0] ?? null : null;
   return { p, manager, devices, grants, tickets, onboarding: onboarding ?? null, cloneFrom };
@@ -304,7 +330,7 @@ export async function listPeopleForPicker() {
 export async function myRequests(meId: number) {
   const t = schema.tickets;
   return db
-    .select({ id: t.id, subject: t.subject, status: t.status, kind: t.kind, createdAt: t.createdAt, updatedAt: t.updatedAt, assignee: sql<string | null>`(select display_name from people a where a.id = ${t.assigneeId})`, lastMessageAt: sql<Date | null>`(select max(created_at) from ticket_messages m where m.ticket_id = ${t.id})` })
+    .select({ id: t.id, ref: t.ref, subject: t.subject, status: t.status, kind: t.kind, createdAt: t.createdAt, updatedAt: t.updatedAt, assignee: sql<string | null>`(select display_name from people a where a.id = ${t.assigneeId})`, lastMessageAt: sql<Date | null>`(select max(created_at) from ticket_messages m where m.ticket_id = ${t.id})` })
     .from(t)
     .where(eq(t.requesterId, meId))
     .orderBy(sql`case when ${t.status} in ('open','in_progress','pending','on_hold') then 0 else 1 end`, desc(t.updatedAt))
@@ -352,10 +378,10 @@ export async function globalSearch(q: string) {
   if (!term) return { tickets: [], people: [], assets: [] };
   const t = schema.tickets;
   const tickets = await db
-    .select({ id: t.id, legacyRef: t.legacyRef, subject: t.subject, status: t.status, createdAt: t.createdAt, requester: schema.people.displayName, rank: sql<number>`ts_rank(${t.search}, plainto_tsquery('english', ${term}))` })
+    .select({ id: t.id, ref: t.ref, legacyRef: t.legacyRef, subject: t.subject, status: t.status, createdAt: t.createdAt, requester: schema.people.displayName, rank: sql<number>`ts_rank(${t.search}, plainto_tsquery('english', ${term}))` })
     .from(t)
     .leftJoin(schema.people, eq(schema.people.id, t.requesterId))
-    .where(or(sql`${t.search} @@ plainto_tsquery('english', ${term})`, ilike(t.legacyRef, `%${term}%`), ilike(t.subject, `%${term}%`), sql`'TF-' || lpad(${t.id}::text, 6, '0') ilike ${"%" + term + "%"}`))
+    .where(or(sql`${t.search} @@ plainto_tsquery('english', ${term})`, ilike(t.ref, `%${term.replace(/^#/, "")}%`), ilike(t.subject, `%${term}%`)))
     .orderBy(desc(sql`ts_rank(${t.search}, plainto_tsquery('english', ${term}))`), desc(t.createdAt))
     .limit(12);
   const people = await db.select({ id: schema.people.id, displayName: schema.people.displayName, jobTitle: schema.people.jobTitle, department: schema.people.department, status: schema.people.status }).from(schema.people).where(or(ilike(schema.people.displayName, `%${term}%`), ilike(schema.people.email, `%${term}%`))).limit(6);

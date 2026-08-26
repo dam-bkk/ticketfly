@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { formatTicketRef } from "@ticketfly/core";
 import { requireStaff } from "@/lib/auth";
 import { globalSearch } from "@/lib/queries";
 import { relTime } from "@/lib/utils";
@@ -28,7 +27,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <Section title={`Tickets · ${res.tickets.length}`}>
               {res.tickets.map((t) => (
                 <Link key={t.id} href={`/tickets/${t.id}`} className="row flex items-center gap-3 px-3 py-2.5">
-                  <span className="w-24 shrink-0 font-mono text-[11.5px] text-ink-3">{t.legacyRef ?? formatTicketRef(t.id)}</span>
+                  <span className="w-24 shrink-0 font-mono text-[11.5px] text-ink-3">{t.ref}</span>
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{t.subject}</span>
                   <span className="text-[12px] text-ink-3">{t.requester}</span>
                   <StatusPill status={t.status} />

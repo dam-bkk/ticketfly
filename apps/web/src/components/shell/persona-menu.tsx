@@ -25,7 +25,7 @@ export function PersonaMenu({ me, children, align = "start" }: { me: { displayNa
           </div>
           <DropdownMenu.Separator className="my-1 h-px bg-line" />
           <Item onSelect={toggleTheme} icon={<span className="relative size-4"><Sun className="absolute inset-0 size-4 dark:opacity-0" /><Moon className="absolute inset-0 size-4 opacity-0 dark:opacity-100" /></span>}>Toggle theme</Item>
-          <Item onSelect={() => router.push("/login")} icon={<UserRound className="size-4" />}>Switch persona (dev)</Item>
+          <Item onSelect={() => router.push("/login")} icon={<UserRound className="size-4" />}>Sign in as someone else (dev)</Item>
           <DropdownMenu.Separator className="my-1 h-px bg-line" />
           <Item onSelect={() => start(() => signOut())} icon={<LogOut className="size-4" />}>Sign out</Item>
         </DropdownMenu.Content>

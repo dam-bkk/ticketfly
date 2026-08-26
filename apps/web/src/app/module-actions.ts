@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePrincipal, requireStaff } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
-import { alertPriority } from "@ticketfly/core";
+import { alertPriority, formatTicketRef } from "@ticketfly/core";
 
 const s = (fd: FormData, k: string) => {
   const v = fd.get(k);
@@ -194,7 +194,8 @@ export async function alertToIncident(id: number) {
   const me = await requireStaff();
   const [a] = await db.select().from(schema.alerts).where(eq(schema.alerts.id, id)).limit(1);
   if (!a || a.ticketId) return;
-  const [t] = await db.insert(schema.tickets).values({ kind: "incident", subject: a.title, description: `${a.detail ?? ""}\n\nSource: ${a.source} · Resource: ${a.resource ?? "—"} · Fired ${a.firedAt.toISOString()}`, status: "open", priority: alertPriority(a.severity, a.source), requesterId: me.id, assigneeId: me.id, source: "system", tags: ["alert", a.source] }).returning({ id: schema.tickets.id });
+  const [seq] = (await db.execute(sql`select nextval('ticket_number_seq') as n`)) as unknown as { n: number | string }[];
+  const [t] = await db.insert(schema.tickets).values({ ref: formatTicketRef("incident", Number(seq?.n)), kind: "incident", subject: a.title, description: `${a.detail ?? ""}\n\nSource: ${a.source} · Resource: ${a.resource ?? "—"} · Fired ${a.firedAt.toISOString()}`, status: "open", priority: alertPriority(a.severity, a.source), requesterId: me.id, assigneeId: me.id, source: "system", tags: ["alert", a.source] }).returning({ id: schema.tickets.id });
   await db.update(schema.alerts).set({ ticketId: t!.id, status: a.status === "new" ? "acknowledged" : a.status, acknowledgedAt: a.acknowledgedAt ?? new Date() }).where(eq(schema.alerts.id, id));
   await logActivity(me, { action: "alert.incident.create", category: "integration", targetType: "alert", targetId: id, after: { ticketId: t!.id } });
   redirect(`/tickets/${t!.id}`);

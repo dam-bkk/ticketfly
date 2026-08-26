@@ -1,6 +1,6 @@
 /** Ticket domain: statuses, priority matrix, legacy reference parsing. */
 
-export const TICKET_STATUSES = ["open", "pending", "in_progress", "on_hold", "resolved", "closed"] as const;
+export const TICKET_STATUSES = ["open", "pending", "in_progress", "pending_approval", "on_hold", "resolved", "closed", "cancelled", "transferred"] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 
 export const TICKET_PRIORITIES = ["low", "medium", "high", "urgent"] as const;
@@ -11,12 +11,15 @@ export type TicketKind = (typeof TICKET_KINDS)[number];
 
 /** Allowed transitions. Closed is terminal except reopen → open. */
 const TRANSITIONS: Record<TicketStatus, readonly TicketStatus[]> = {
-  open: ["pending", "in_progress", "on_hold", "resolved"],
-  pending: ["open", "in_progress", "on_hold", "resolved"],
-  in_progress: ["pending", "on_hold", "resolved"],
-  on_hold: ["open", "in_progress", "resolved"],
+  open: ["pending", "in_progress", "pending_approval", "on_hold", "resolved", "cancelled", "transferred"],
+  pending: ["open", "in_progress", "on_hold", "resolved", "cancelled"],
+  in_progress: ["pending", "pending_approval", "on_hold", "resolved", "cancelled", "transferred"],
+  pending_approval: ["in_progress", "open", "cancelled"],
+  on_hold: ["open", "in_progress", "resolved", "cancelled"],
   resolved: ["closed", "open"],
   closed: ["open"],
+  cancelled: ["open"],
+  transferred: ["open"],
 };
 
 export function canTransition(from: TicketStatus, to: TicketStatus): boolean {
@@ -28,7 +31,7 @@ export function nextStatuses(from: TicketStatus): readonly TicketStatus[] {
 }
 
 /** Statuses during which SLA clocks are paused (waiting on requester / third party). */
-export const SLA_PAUSED_STATUSES: readonly TicketStatus[] = ["pending", "on_hold"];
+export const SLA_PAUSED_STATUSES: readonly TicketStatus[] = ["pending", "on_hold", "pending_approval"];
 
 export function isSlaPaused(status: TicketStatus): boolean {
   return SLA_PAUSED_STATUSES.includes(status);
@@ -64,15 +67,24 @@ export function parseLegacyRef(text: string): LegacyRef | null {
   return { prefix, number, ref: `${prefix}-${number}` };
 }
 
-/** TicketFly references: TF-000123 (zero-padded for sortable display). */
-export function formatTicketRef(id: number): string {
-  return `TF-${String(id).padStart(6, "0")}`;
+/** Reference prefix by kind — continues Freshservice's scheme (one shared counter, INC-/SR-). */
+export function refPrefix(kind: string): "INC" | "SR" | "CHG" {
+  if (kind === "incident") return "INC";
+  if (kind === "change") return "CHG";
+  return "SR";
+}
+export function formatTicketRef(kind: string, n: number): string {
+  return `${refPrefix(kind)}-${n}`;
+}
+/** Sortable, unambiguous identity for a ticket even before its ref is known. */
+export function fallbackRef(id: number): string {
+  return `#${id}`;
 }
 
 /** Subject tag used for email threading. Recognises both new and legacy forms. */
-const SUBJECT_TAG_RE = /\[#(TF-\d{1,8}|INC-\d{1,8}|SR-\d{1,8}|CHG-\d{1,8})\]/i;
+const SUBJECT_TAG_RE = /\[#?(TF-\d{1,8}|INC-\d{1,8}|SR-\d{1,8}|CHG-\d{1,8})\]|#(INC-\d{1,8}|SR-\d{1,8}|CHG-\d{1,8})\b/i;
 
 export function parseSubjectTag(subject: string): string | null {
   const m = SUBJECT_TAG_RE.exec(subject);
-  return m ? (m[1] as string).toUpperCase() : null;
+  return m ? ((m[1] ?? m[2]) as string).toUpperCase() : null;
 }

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Laptop, Smartphone } from "lucide-react";
-import { formatTicketRef } from "@ticketfly/core";
 import { requireStaff } from "@/lib/auth";
 import { getAssetFull, listPickers } from "@/lib/assets";
 import { cn, longTime, money, relTime } from "@/lib/utils";
@@ -173,7 +172,7 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
                         <li key={t.id}>
                           <Link href={`/tickets/${t.id}`} className="row flex items-center gap-3 px-4 py-2.5 text-[13px]">
                             <StatusDot status={t.status} />
-                            <span className="w-24 font-mono text-[11.5px] text-ink-3">{t.legacyRef ?? formatTicketRef(t.id)}</span>
+                            <span className="w-24 font-mono text-[11.5px] text-ink-3">{t.ref}</span>
                             <span className="min-w-0 flex-1 truncate font-medium">{t.subject}</span>
                             <span className="capitalize text-ink-3">{t.kind}</span>
                             <span className="text-[12px] text-ink-4">{relTime(t.createdAt)}</span>

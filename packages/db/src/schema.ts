@@ -20,7 +20,7 @@ const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
 
 export const personRole = pgEnum("person_role", ["requester", "agent", "admin", "hr", "manager"]);
 export const personStatus = pgEnum("person_status", ["active", "onboarding", "offboarding", "left"]);
-export const ticketStatus = pgEnum("ticket_status", ["open", "pending", "in_progress", "on_hold", "resolved", "closed"]);
+export const ticketStatus = pgEnum("ticket_status", ["open", "pending", "in_progress", "pending_approval", "on_hold", "resolved", "closed", "cancelled", "transferred"]);
 export const ticketPriority = pgEnum("ticket_priority", ["low", "medium", "high", "urgent"]);
 export const ticketKind = pgEnum("ticket_kind", ["incident", "request", "onboarding", "offboarding", "access", "change"]);
 export const ticketSource = pgEnum("ticket_source", ["portal", "email", "agent", "import", "system"]);
@@ -72,6 +72,7 @@ export const tickets = pgTable(
   "tickets",
   {
     id: serial("id").primaryKey(),
+    ref: text("ref").notNull().default(""),
     legacyRef: text("legacy_ref"),
     kind: ticketKind("kind").notNull().default("incident"),
     subject: text("subject").notNull(),
@@ -100,11 +101,12 @@ export const tickets = pgTable(
     custom: jsonb("custom").$type<Record<string, string>>().notNull().default({}),
     raw: jsonb("raw"),
     search: tsvector("search").generatedAlwaysAs(
-      (): SQL => sql`setweight(to_tsvector('english', coalesce(${tickets.subject}, '')), 'A') || setweight(to_tsvector('english', coalesce(${tickets.description}, '')), 'B') || setweight(to_tsvector('simple', coalesce(${tickets.legacyRef}, '')), 'A')`,
+      (): SQL => sql`setweight(to_tsvector('english', coalesce(${tickets.subject}, '')), 'A') || setweight(to_tsvector('english', coalesce(${tickets.description}, '')), 'B') || setweight(to_tsvector('simple', coalesce(${tickets.legacyRef}, '')), 'A') || setweight(to_tsvector('simple', coalesce(${tickets.ref}, '')), 'A')`,
     ),
   },
   (t) => [
     uniqueIndex("tickets_legacy_ref_idx").on(t.legacyRef),
+    index("tickets_ref_idx").on(t.ref),
     index("tickets_status_idx").on(t.status),
     index("tickets_assignee_idx").on(t.assigneeId),
     index("tickets_requester_idx").on(t.requesterId),

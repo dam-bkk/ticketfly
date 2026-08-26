@@ -5,12 +5,16 @@ import { Avatar } from "@/components/ui/avatar";
 import { PersonaMenu } from "@/components/shell/persona-menu";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { PortalNav } from "./nav";
+import { viewAsContext } from "@/lib/view-as";
+import { ViewAs, ViewAsBanner } from "@/components/shell/view-as";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const me = await requirePrincipal();
   const staff = me.role === "agent" || me.role === "admin" || me.role === "hr";
+  const va = await viewAsContext(me);
   return (
     <div className="min-h-dvh bg-canvas">
+      {me.actor && <ViewAsBanner viewing={{ displayName: me.displayName, role: me.role }} />}
       <header className="sticky top-0 z-40 bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1080px] items-center gap-6 px-6">
           <Link href="/portal" className="rounded-md">
@@ -19,6 +23,7 @@ export default async function PortalLayout({ children }: { children: React.React
           <PortalNav />
           <div className="ml-auto flex items-center gap-3">
             <CommandPalette portal />
+            {va && <ViewAs people={va.people} viewing={va.viewing} compact />}
             {staff && (
               <Link href="/tickets" className="text-[12.5px] font-medium text-ink-3 hover:text-ink">
                 Back to IT workspace

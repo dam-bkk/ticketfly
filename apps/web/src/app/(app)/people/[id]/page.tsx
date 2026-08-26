@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Laptop, Smartphone } from "lucide-react";
-import { formatTicketRef, rollupCost } from "@ticketfly/core";
+import { rollupCost } from "@ticketfly/core";
 import { requireStaff } from "@/lib/auth";
 import { getPerson } from "@/lib/queries";
 import { money, relTime } from "@/lib/utils";
@@ -149,7 +149,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                         <Link href={`/tickets/${t.id}`} className="row flex items-center gap-3 px-4 py-2.5 text-[13px]">
                           <StatusDot status={t.status} />
                           <span className="min-w-0 flex-1 truncate">{t.subject}</span>
-                          <span className="font-mono text-[11px] text-ink-4">{t.legacyRef ?? formatTicketRef(t.id)}</span>
+                          <span className="font-mono text-[11px] text-ink-4">{t.ref}</span>
                           <span className="text-[12px] text-ink-4">{relTime(t.createdAt)}</span>
                         </Link>
                       </li>
