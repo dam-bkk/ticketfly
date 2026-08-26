@@ -1,0 +1,27 @@
+# Reusable deploy step: apply Bicep, then point web + worker at the new image digest and insert the release row.
+parameters:
+  - name: env
+    type: string
+  - name: version
+    type: string
+
+steps:
+  - task: AzureCLI@2
+    displayName: Deploy ${{ parameters.env }} · v${{ parameters.version }}
+    inputs:
+      azureSubscription: sc-ticketfly-wif
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -euo pipefail
+        RG=rg-ticketfly-${{ parameters.env }}
+        IMG=acrticketfly.azurecr.io/ticketfly:${{ parameters.version }}
+        az deployment group create -g $RG -f infra/main.bicep -p env=${{ parameters.env }} image=$IMG appVersion=${{ parameters.version }} gitSha=$(Build.SourceVersion)
+        az containerapp update -g $RG -n tf-${{ parameters.env }}-web --image $IMG --set-env-vars APP_VERSION=${{ parameters.version }} APP_ENV=${{ parameters.env }} GIT_SHA=$(Build.SourceVersion)
+        az containerapp update -g $RG -n tf-${{ parameters.env }}-worker --image $IMG --set-env-vars APP_VERSION=${{ parameters.version }} APP_ENV=${{ parameters.env }}
+        # Migrations + release row run as a one-off job from the same image
+        az containerapp job start -g $RG -n tf-${{ parameters.env }}-migrate
+  - script: |
+      URL=$(az containerapp show -g rg-ticketfly-${{ parameters.env }} -n tf-${{ parameters.env }}-web --query properties.configuration.ingress.fqdn -o tsv)
+      curl -fsS https://$URL/api/version | grep '"version":"${{ parameters.version }}"'
+    displayName: Smoke test /api/version

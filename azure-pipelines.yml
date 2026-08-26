@@ -1,0 +1,121 @@
+# TicketFly · Azure DevOps pipeline
+# lint → typecheck → unit tests (100% on core) → integration tests → build image → scan → deploy dev → smoke → approval → staging → prod
+# Service connection uses workload identity federation on the Entra issuer (no secrets).
+
+trigger:
+  branches: { include: [main] }
+
+variables:
+  - name: acrName
+    value: acrticketfly
+  - name: imageRepo
+    value: ticketfly
+  - name: nodeVersion
+    value: "22.x"
+
+stages:
+  - stage: Verify
+    displayName: Verify
+    jobs:
+      - job: test
+        pool: { vmImage: ubuntu-latest }
+        services:
+          postgres:
+            image: postgres:16
+            env: { POSTGRES_DB: ticketfly, POSTGRES_HOST_AUTH_METHOD: trust }
+            ports: ["5432:5432"]
+        steps:
+          - task: NodeTool@0
+            inputs: { versionSpec: $(nodeVersion) }
+          - script: corepack enable && corepack prepare pnpm@11.12.0 --activate && pnpm install --frozen-lockfile
+            displayName: Install
+          - script: pnpm -r typecheck
+            displayName: Typecheck
+          - script: pnpm --filter @ticketfly/web lint
+            displayName: Lint
+          - script: pnpm --filter @ticketfly/core test
+            displayName: Unit tests (core, 100% coverage gate)
+          - script: |
+              export DATABASE_URL=postgres://postgres@localhost:5432/ticketfly
+              pnpm db:push && pnpm db:seed && pnpm --filter @ticketfly/web test
+            displayName: Integration tests against throwaway Postgres
+          - script: |
+              # Version is derived, never typed: conventional commits since last tag → bump
+              node scripts/version.mjs > version.txt
+              echo "##vso[task.setvariable variable=appVersion;isOutput=true]$(cat version.txt)"
+            name: ver
+            displayName: Compute semantic version
+
+  - stage: Build
+    dependsOn: Verify
+    variables:
+      appVersion: $[ stageDependencies.Verify.test.outputs['ver.appVersion'] ]
+    jobs:
+      - job: image
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - task: AzureCLI@2
+            displayName: Build & push to ACR
+            inputs:
+              azureSubscription: sc-ticketfly-wif
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az acr login --name $(acrName)
+                docker build --build-arg APP_VERSION=$(appVersion) --build-arg GIT_SHA=$(Build.SourceVersion) \
+                  -t $(acrName).azurecr.io/$(imageRepo):$(appVersion) -t $(acrName).azurecr.io/$(imageRepo):$(Build.SourceVersion) .
+                docker push --all-tags $(acrName).azurecr.io/$(imageRepo)
+          - task: AzureCLI@2
+            displayName: Scan image (Defender for Containers)
+            inputs:
+              azureSubscription: sc-ticketfly-wif
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: az acr repository show-tags --name $(acrName) --repository $(imageRepo) --top 3 --orderby time_desc
+
+  - stage: Dev
+    dependsOn: Build
+    variables:
+      appVersion: $[ stageDependencies.Verify.test.outputs['ver.appVersion'] ]
+    jobs:
+      - deployment: dev
+        environment: ticketfly-dev
+        pool: { vmImage: ubuntu-latest }
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: infra/pipeline/deploy.yml
+                  parameters: { env: dev, version: $(appVersion) }
+
+  - stage: Staging
+    dependsOn: Dev
+    variables:
+      appVersion: $[ stageDependencies.Verify.test.outputs['ver.appVersion'] ]
+    jobs:
+      - deployment: staging
+        environment: ticketfly-staging
+        pool: { vmImage: ubuntu-latest }
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: infra/pipeline/deploy.yml
+                  parameters: { env: stg, version: $(appVersion) }
+
+  - stage: Production
+    dependsOn: Staging
+    variables:
+      appVersion: $[ stageDependencies.Verify.test.outputs['ver.appVersion'] ]
+    jobs:
+      - deployment: prod
+        environment: ticketfly-prod # manual approval configured on the environment
+        pool: { vmImage: ubuntu-latest }
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: infra/pipeline/deploy.yml
+                  parameters: { env: prod, version: $(appVersion) }
+                - script: git tag v$(appVersion) && git push origin v$(appVersion)
+                  displayName: Tag release

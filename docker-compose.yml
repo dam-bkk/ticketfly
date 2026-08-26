@@ -1,0 +1,18 @@
+# Local stack: the exact image Container Apps will run + Postgres 16.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ticketfly
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports: ["5433:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  web:
+    build: { context: ., target: web }
+    environment:
+      DATABASE_URL: postgres://postgres@db:5432/ticketfly
+      APP_ENV: local
+    ports: ["3000:3000"]
+    depends_on: [db]
+volumes:
+  pgdata: {}
