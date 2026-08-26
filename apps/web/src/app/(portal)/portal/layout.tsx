@@ -16,7 +16,7 @@ export default async function PortalLayout({ children }: { children: React.React
     <div className="min-h-dvh bg-canvas">
       <header className="sticky top-0 z-40 bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-[1080px] items-center gap-6 px-6">
-          <Link href="/portal" className="rounded-md">
+          <Link href="/portal" className="flex h-8 items-center rounded-md">
             <Logo />
           </Link>
           <PortalNav />

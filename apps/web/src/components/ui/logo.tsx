@@ -13,7 +13,7 @@ export function QiMark({ size = 22, className }: { size?: number; className?: st
 
 export function Logo({ className, size = 24, wordmark = true, plate }: { className?: string; size?: number; wordmark?: boolean; plate?: boolean }) {
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
+    <span className={cn("inline-flex items-center gap-2 leading-none", className)}>
       {plate ? <span className="inline-flex items-center justify-center rounded-md bg-white p-1"><QiMark size={size} /></span> : <QiMark size={size} />}
       {wordmark && <span className="text-[14px] font-medium tracking-[-0.01em] text-ink">Service Desk</span>}
     </span>

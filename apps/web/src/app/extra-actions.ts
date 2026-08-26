@@ -9,6 +9,7 @@ import { requirePrincipal, requireStaff } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { runRule } from "@/lib/automation";
 import { replyToTicket, updateTicket } from "./actions";
+import { suggestArticles as suggestKb } from "@/lib/kb";
 
 // ---------- Attachments ----------
 export async function uploadAttachment(ticketId: number, fd: FormData) {
@@ -185,4 +186,48 @@ export async function deleteSavedView(id: number) {
   await db.delete(schema.savedViews).where(and(eq(schema.savedViews.id, id), sql`(${schema.savedViews.ownerId} = ${me.id} or ${schema.savedViews.shared} = false)`));
   await logActivity(me, { action: "view.delete", category: "settings", targetType: "saved_view", targetId: id });
   revalidatePath("/tickets");
+}
+
+/** Autosave one Field Manager value from the ticket properties rail (no Save button). */
+export async function saveTicketCustomValue(ticketId: number, key: string, value: string) {
+  const me = await requireStaff();
+  const [t] = await db.select({ custom: schema.tickets.custom }).from(schema.tickets).where(eq(schema.tickets.id, ticketId)).limit(1);
+  if (!t) return;
+  const [f] = await db.select().from(schema.customFields).where(and(eq(schema.customFields.entity, "ticket"), eq(schema.customFields.key, key))).limit(1);
+  if (!f) return;
+  const next = f.type === "toggle" ? (value === "Yes" ? "Yes" : "No") : value;
+  if ((t.custom[key] ?? "") === next) return;
+  const custom: Record<string, string> = { ...t.custom, [key]: next };
+  await db.update(schema.tickets).set({ custom, updatedAt: new Date() }).where(eq(schema.tickets.id, ticketId));
+  await logActivity(me, { action: "ticket.custom.update", category: "ticket", targetType: "ticket", targetId: ticketId, before: { [key]: t.custom[key] ?? null }, after: { [key]: next } });
+  revalidatePath(`/tickets/${ticketId}`);
+}
+
+// ---------- Portal: requester self-close ----------
+export async function requesterCloseTicket(ticketId: number) {
+  const me = await requirePrincipal();
+  const [t] = await db.select({ id: schema.tickets.id, status: schema.tickets.status, requesterId: schema.tickets.requesterId, slaPausedSince: schema.tickets.slaPausedSince, slaPausedMinutes: schema.tickets.slaPausedMinutes }).from(schema.tickets).where(eq(schema.tickets.id, ticketId)).limit(1);
+  if (!t || t.requesterId !== me.id) return;
+  if (t.status === "resolved" || t.status === "closed") return;
+  const patch: Partial<typeof schema.tickets.$inferInsert> = { status: "resolved", resolvedAt: new Date(), updatedAt: new Date() };
+  if (t.slaPausedSince) {
+    patch.slaPausedSince = null;
+    patch.slaPausedMinutes = t.slaPausedMinutes + Math.round((Date.now() - t.slaPausedSince.getTime()) / 60000);
+  }
+  await db.update(schema.tickets).set(patch).where(eq(schema.tickets.id, ticketId));
+  await db.insert(schema.ticketMessages).values({ ticketId, authorId: me.id, kind: "system", body: "Closed by requester", via: "portal" });
+  await logActivity(me, { action: "ticket.requester.close", category: "ticket", targetType: "ticket", targetId: ticketId, before: { status: t.status }, after: { status: "resolved" } });
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath(`/portal/requests/${ticketId}`);
+  revalidatePath("/portal/requests");
+  revalidatePath("/tickets");
+}
+
+// ---------- Portal: KB deflection while typing ----------
+export async function suggestArticles(q: string) {
+  await requirePrincipal();
+  const query = String(q ?? "").trim().slice(0, 300);
+  if (query.length < 4) return [] as { id: number; title: string }[];
+  const rows = await suggestKb(query, 3);
+  return rows.map((r) => ({ id: r.id, title: r.title }));
 }

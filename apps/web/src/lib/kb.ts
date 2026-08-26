@@ -1,6 +1,6 @@
 import "server-only";
 import { db, schema } from "@ticketfly/db";
-import { and, asc, count, desc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 
 export async function listFolders() {
   const rows = await db
@@ -39,4 +39,20 @@ export async function getArticle(id: number) {
     .where(eq(schema.kbArticles.id, id))
     .limit(1);
   return row ?? null;
+}
+
+const STOP = new Set(["the", "and", "for", "with", "that", "this", "from", "have", "not", "are", "was", "but", "you", "your", "can", "cannot", "when", "what", "how", "does", "will", "still", "just", "please", "help", "issue", "problem", "working", "work", "need", "want", "also", "into", "onto", "about", "after", "before", "again", "does", "doesn", "don", "won", "isn", "wont", "dont"]);
+
+/** Portal deflection: 2–3 published articles matching the words a requester is typing. Title hits outrank body hits. */
+export async function suggestArticles(query: string, limit = 3) {
+  const words = [...new Set(query.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").split(/\s+/).filter((w) => w.length >= 4 && !STOP.has(w)))].slice(0, 8);
+  if (!words.length) return [] as { id: number; title: string }[];
+  const a = schema.kbArticles;
+  const score = sql<number>`(${sql.join(words.map((w) => sql`(case when ${a.title} ilike ${"%" + w + "%"} then 3 else 0 end) + (case when ${a.body} ilike ${"%" + w + "%"} then 1 else 0 end)`), sql` + `)})`;
+  return db
+    .select({ id: a.id, title: a.title, score })
+    .from(a)
+    .where(and(eq(a.status, "published"), or(...words.map((w) => or(ilike(a.title, `%${w}%`), ilike(a.body, `%${w}%`))!))!))
+    .orderBy(desc(score), desc(a.views))
+    .limit(limit);
 }
