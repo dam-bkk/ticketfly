@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { differenceInCalendarDays } from "date-fns";
+import { addDays, differenceInCalendarDays, format, isBefore } from "date-fns";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { requireStaff } from "@/lib/auth";
 import { listOnboardings } from "@/lib/queries";
@@ -60,10 +60,6 @@ export async function JourneysBoard({ kind }: { kind: "onboarding" | "offboardin
                   {kind === "onboarding" ? ["HR raises New starter from the portal — join date, role, and a colleague to clone access from.", "IT reviews the resolved access list once; every grant is recorded on the person record.", "Account and licences are created at join − 5 working days; laptop shipped at − 3.", "Day one: activation email with the welcome pack; requester acknowledges the laptop in the portal."].map((s) => <li key={s}>{s}</li>) : ["HR (or the manager) raises Leaver with the last working day.", "Devices are recalled; the requester confirms return from the portal.", "On the last day: sign-in disabled, sessions revoked, every grant removed in reverse.", "Watchdog alerts HR and IT if anything is still active 24 h later."].map((s) => <li key={s}>{s}</li>)}
                 </ol>
               </div>
-              <div className="panel p-4">
-                <p className="label mb-2">Replaces in Freshservice</p>
-                <p className="text-[13.5px] text-ink-2">Admin → Service Request Management → {kind === "onboarding" ? "Employee Onboarding" : "Employee Offboarding"}, plus the RFI and COPE forms that lived outside the tool.</p>
-              </div>
             </aside>
           </div>
         </div>
@@ -73,6 +69,7 @@ export async function JourneysBoard({ kind }: { kind: "onboarding" | "offboardin
 }
 
 function Column({ title, hint, items, kind }: { title: string; hint: string; items: Awaited<ReturnType<typeof listOnboardings>>; kind: "onboarding" | "offboarding" }) {
+  const today = new Date();
   return (
     <section>
       <div className="mb-3 flex items-baseline gap-2">
@@ -94,6 +91,9 @@ function Column({ title, hint, items, kind }: { title: string; hint: string; ite
           const days = differenceInCalendarDays(new Date(o.joinDate), new Date());
           const done = o.tasks.filter((t) => t.status === "done").length;
           const overdue = kind === "offboarding" && days < 0 && done < o.tasks.length;
+          const lateTask = o.tasks.some((t) => t.status !== "done" && isBefore(addDays(new Date(o.joinDate), t.dueOffsetDays), today));
+          const stage = overdue ? "Overdue" : lateTask && o.stage !== "blocked" ? "At risk" : o.stage;
+          const stageTone = overdue || o.stage === "blocked" ? "crit" : lateTask ? "warn" : o.stage === "ready" ? "ok" : "info";
           return (
             <article key={o.id} className="panel p-4">
               <div className="flex items-start gap-3">
@@ -103,8 +103,8 @@ function Column({ title, hint, items, kind }: { title: string; hint: string; ite
                     <Link href={`/people/${person.id}`} className="truncate text-[13.5px] font-medium hover:underline">
                       {person.displayName}
                     </Link>
-                    <Tone tone={overdue ? "crit" : o.stage === "ready" ? "ok" : o.stage === "blocked" ? "crit" : "info"} className="capitalize">
-                      {overdue ? "Overdue" : o.stage}
+                    <Tone tone={stageTone} className="capitalize">
+                      {stage}
                     </Tone>
                   </div>
                   <p className="truncate text-[12.5px] text-ink-3">
@@ -113,7 +113,7 @@ function Column({ title, hint, items, kind }: { title: string; hint: string; ite
                 </div>
                 <div className="text-right">
                   <p className={cn("tnum text-[22px] font-semibold leading-none tracking-[-0.02em]", days < 0 ? "text-crit" : days <= 5 ? "text-warn" : "")}>{days === 0 ? "Today" : days < 0 ? `${-days}d ago` : `${days}d`}</p>
-                  <p className="mt-1 text-[11px] text-ink-3">{o.joinDate}</p>
+                  <p className="mt-1 text-[11px] text-ink-3">{format(new Date(o.joinDate), "EEE d MMM")}</p>
                 </div>
               </div>
               <div className="mt-3">

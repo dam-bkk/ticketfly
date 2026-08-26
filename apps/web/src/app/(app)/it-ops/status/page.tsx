@@ -30,7 +30,7 @@ export default async function StatusPage() {
               <h1 className="text-[20px] font-semibold tracking-[-0.01em]">Service status</h1>
               <p className="text-[13px] text-ink-3">What staff see on the portal. Change owners flip a service here; starting a change with a window does it automatically.</p>
             </div>
-            <span className={cn("flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-medium hairline", HEALTH[overall]!.tone)}>
+            <span className={cn("flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-[12.5px] font-medium hairline", HEALTH[overall]!.tone)}>
               <span className={cn("size-2 rounded-full", HEALTH[overall]!.dot)} /> {overall === "operational" ? "All systems operational" : overall === "degraded" ? "Some services degraded" : "Outage in progress"}
             </span>
           </div>
@@ -49,10 +49,10 @@ export default async function StatusPage() {
                   {s.maintenanceFrom && <span className="text-[12px] text-ink-3">Maintenance {format(s.maintenanceFrom, "d MMM HH:mm")} → {s.maintenanceTo ? format(s.maintenanceTo, "HH:mm") : ""}</span>}
                 </span>
                 {owner && <span className="flex items-center gap-1.5 text-[12px] text-ink-3"><Avatar name={owner} size={16} /> {owner}</span>}
-                <span className="flex gap-1">
+                <span className="flex shrink-0 gap-0.5 rounded-md bg-surface-2 p-0.5" role="group" aria-label={`Status of ${s.name}`}>
                   {Object.entries(HEALTH).map(([key, h]) => (
                     <form key={key} action={setServiceHealth.bind(null, s.id, key)}>
-                      <button type="submit" className={cn("h-7 rounded-md px-2 text-[11.5px] font-medium hairline hover:bg-surface-2", s.health === key ? `bg-surface-2 ${h.tone}` : "text-ink-3")}>{h.label}</button>
+                      <button type="submit" aria-pressed={s.health === key} className={cn("h-6 rounded-[5px] px-2 text-[11px] font-medium transition-colors", s.health === key ? `bg-surface shadow-1 ${h.tone}` : "text-ink-3 hover:text-ink")}>{h.label}</button>
                     </form>
                   ))}
                 </span>

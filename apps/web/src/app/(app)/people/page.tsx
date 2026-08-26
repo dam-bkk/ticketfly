@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { format } from "date-fns";
 import { requireStaff } from "@/lib/auth";
 import { listPeople } from "@/lib/queries";
 import { cn, money } from "@/lib/utils";
@@ -19,22 +20,22 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
       <Topbar crumbs={[{ label: "People" }]} />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1180px] px-6 py-4 rise">
-          <div className="flex items-end justify-between">
-            <div>
-              <h1 className="text-[22px] font-semibold tracking-[-0.01em]">People</h1>
-              <p className="text-[13.5px] text-ink-3">Every person&apos;s devices, access grants and what they cost per month — the record offboarding reverses.</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <form>
-                <input name="q" defaultValue={sp.q} placeholder="Search name, email, department" className="h-8 w-64 rounded-md bg-surface px-2 text-[13.5px] hairline focus:outline-none focus:shadow-[inset_0_0_0_1px_var(--accent),0_0_0_3px_var(--ring)]" />
-              </form>
-              <div className="flex gap-1">
+          <div>
+            <h1 className="text-[22px] font-semibold tracking-[-0.01em]">People</h1>
+            <p className="text-[13.5px] text-ink-3">Every person&apos;s devices, access grants and what they cost per month — the record offboarding reverses.</p>
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex gap-1">
                 {["", "onboarding", "offboarding", "active"].map((s) => (
                   <Link key={s || "all"} href={`/people${s ? `?status=${s}` : ""}`} className={cn("h-8 rounded-md px-2 text-[12.5px] font-medium capitalize leading-8 text-ink-2 hover:bg-surface-2", (sp.status ?? "") === s && "bg-surface-2 text-ink")}>
                     {s || "All"}
                   </Link>
                 ))}
-              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <form>
+                <input name="q" defaultValue={sp.q} placeholder="Search name, email, department" className="h-8 w-64 rounded-md bg-surface px-2 text-[13.5px] hairline focus:outline-none focus:shadow-[inset_0_0_0_1px_var(--accent),0_0_0_3px_var(--ring)]" />
+              </form>
             </div>
           </div>
           <div className="panel mt-3 overflow-hidden">
@@ -67,7 +68,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
                     <td className="px-4 py-2 text-ink-2">{p.department}</td>
                     <td className="px-4 py-2 text-ink-2">{p.officeLocation}</td>
                     <td className="px-4 py-2">
-                      {p.status === "onboarding" ? <Tone tone="info">Joins {p.joinDate}</Tone> : p.status === "offboarding" ? <Tone tone="warn">Leaves {p.leaveDate}</Tone> : p.status === "left" ? <Tone tone="neutral">Left</Tone> : <span className="capitalize text-ink-3">{p.role}</span>}
+                      {p.status === "onboarding" ? <Tone tone="info">Joins {fmtDay(p.joinDate)}</Tone> : p.status === "offboarding" ? <Tone tone="warn">Leaves {fmtDay(p.leaveDate)}</Tone> : p.status === "left" ? <Tone tone="neutral">Left</Tone> : <span className="capitalize text-ink-3">{p.role}</span>}
                     </td>
                     <td className="tnum px-4 py-2 text-right">{devices}</td>
                     <td className="tnum px-4 py-2 text-right">{grants || "—"}</td>
@@ -82,4 +83,8 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
       </div>
     </>
   );
+}
+
+function fmtDay(d: string | Date | null | undefined) {
+  return d ? format(new Date(d), "d MMM") : "";
 }

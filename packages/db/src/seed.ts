@@ -595,7 +595,7 @@ async function main() {
           { key: "disable", label: "Disable sign-in, revoke sessions", owner: "Security Operations Centre", status: "todo", dueOffsetDays: 0 },
           { key: "groups", label: "Remove 9 access grants", owner: "Security Operations Centre", status: "todo", dueOffsetDays: 0 },
           { key: "licences", label: "Reassign 3 licences", owner: "Security Operations Centre", status: "todo", dueOffsetDays: 1 },
-          { key: "hr-notify", label: "Notify HR of completion", owner: "TicketFly", status: "todo", dueOffsetDays: 1 },
+          { key: "hr-notify", label: "Notify HR of completion", owner: "Automation", status: "todo", dueOffsetDays: 1 },
         ]
       : [
           { key: "hr-request", label: "HR raises new starter", owner: "HR", status: "done", dueOffsetDays: -15 },
@@ -604,7 +604,7 @@ async function main() {
           { key: "licences", label: "Assign licences (M365 E3, Defender, Adobe Acrobat)", owner: "Security Operations Centre", status: "in_progress", dueOffsetDays: -5 },
           { key: "laptop", label: "Prepare and ship laptop", owner: "Servicedesk Support", status: "in_progress", dueOffsetDays: -3 },
           { key: "manager-brief", label: "Manager confirms first-week plan", owner: "Manager", status: "todo", dueOffsetDays: -2 },
-          { key: "activate", label: "Day-one activation & welcome pack", owner: "TicketFly", status: "todo", dueOffsetDays: 0 },
+          { key: "activate", label: "Day-one activation & welcome pack", owner: "Automation", status: "todo", dueOffsetDays: 0 },
         ];
   const allTickets = await db.select({ id: schema.tickets.id, kind: schema.tickets.kind, subject: schema.tickets.subject }).from(schema.tickets);
   for (const p of onboardingPeople) {
@@ -697,7 +697,7 @@ async function main() {
     { name: "Salesforce Sales Cloud", vendor: "Salesforce", type: "software", status: "active", startDate: "2025-10-01", endDate: "2026-09-30", cost: "43200", billing: "annual", ownerId: byName("Nada Haddad").id, licences: 45, notes: "Renewal quote due 1 Sep" },
     { name: "Dell ProSupport Plus — laptops", vendor: "Dell", type: "warranty", status: "active", startDate: "2024-03-01", endDate: "2027-02-28", cost: "9800", billing: "one-off", ownerId: byName("Marcus Tan").id },
     { name: "Cisco SmartNet — HK core switches", vendor: "Cisco", type: "maintenance", status: "expiring", startDate: "2023-09-15", endDate: "2026-09-14", cost: "6400", billing: "annual", ownerId: byName("Daniel Lim").id },
-    { name: "Freshservice — Enterprise", vendor: "Freshworks", type: "software", status: "expiring", startDate: "2025-12-01", endDate: "2026-11-30", cost: "100000", billing: "annual", ownerId: byName("Nada Haddad").id, licences: 70, notes: "Not renewing — replaced by TicketFly" },
+    { name: "Freshservice — Enterprise", vendor: "Freshworks", type: "software", status: "expiring", startDate: "2025-12-01", endDate: "2026-11-30", cost: "100000", billing: "annual", ownerId: byName("Nada Haddad").id, licences: 70, notes: "Not renewing — replaced by Service Desk" },
     { name: "Zoom Workplace Business", vendor: "Zoom", type: "software", status: "expired", startDate: "2024-06-01", endDate: "2026-05-31", cost: "12800", billing: "annual", ownerId: byName("Priya Sharma").id, licences: 80 },
   ]);
   await db.insert(schema.purchaseOrders).values([

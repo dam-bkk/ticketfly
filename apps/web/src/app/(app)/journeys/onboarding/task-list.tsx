@@ -1,5 +1,8 @@
 "use client";
 
+/** Legacy seed rows carry the old product name as the owner of automated steps. */
+const OWNER_LABEL: Record<string, string> = { TicketFly: "Automation", "Security Operations Centre": "SOC", "Servicedesk Support": "Service Desk", "Cloud Infrastructure Support": "Infra" };
+
 import { useTransition } from "react";
 import { Check } from "lucide-react";
 import { addDays, format, isBefore } from "date-fns";
@@ -34,8 +37,8 @@ export function TaskList({ onboardingId, tasks, joinDate, compact }: { onboardin
                   {t.status === "done" && <Check className="size-3" strokeWidth={3} />}
                   {t.status === "in_progress" && <span className="size-1.5 rounded-full bg-accent" />}
                 </span>
-                <span className={cn("min-w-0 flex-1 truncate", t.status === "done" && "text-ink-3 line-through decoration-line-strong")}>{t.label}</span>
-                <span className="hidden text-[11.5px] text-ink-3 sm:inline">{t.owner}</span>
+                <span title={t.label} className={cn("min-w-0 flex-1 truncate", t.status === "done" && "text-ink-3 line-through decoration-line-strong")}>{t.label}</span>
+                <span className="hidden shrink-0 whitespace-nowrap text-[11px] text-ink-3 sm:inline">{OWNER_LABEL[t.owner] ?? t.owner}</span>
                 <span className={cn("tnum w-16 text-right text-[11px]", overdue ? "font-medium text-crit" : "text-ink-3")}>{t.dueOffsetDays === 0 ? "Day 1" : `${t.dueOffsetDays > 0 ? "+" : ""}${t.dueOffsetDays}d`}</span>
                 {!compact && <span className="tnum w-14 text-right text-[11px] text-ink-3">{format(due, "d MMM")}</span>}
               </button>
