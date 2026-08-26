@@ -39,7 +39,7 @@ export default async function SidebarPrefs() {
                 <span className="block text-[13px] font-medium">{label}</span>
                 <span className="block text-[12px] text-ink-3">{desc}</span>
               </span>
-              <span className="text-[11.5px] text-ink-4">{locked ? "always shown" : "tick to hide"}</span>
+              <span className="text-[11.5px] text-ink-3">{locked ? "always shown" : "tick to hide"}</span>
             </label>
           );
         })}

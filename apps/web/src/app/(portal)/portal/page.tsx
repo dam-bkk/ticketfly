@@ -48,7 +48,7 @@ export default async function PortalHome() {
                 <span className="block text-[15px] font-semibold tracking-[-0.01em]">{s.name}</span>
                 <span className="mt-0.5 block text-[12.5px] leading-snug text-ink-3">{s.tagline}</span>
               </span>
-              <ArrowUpRight className="absolute right-4 top-4 size-4 text-ink-4 opacity-0 transition-opacity group-hover:opacity-100" />
+              <ArrowUpRight className="absolute right-4 top-4 size-4 text-ink-3 opacity-0 transition-opacity group-hover:opacity-100" />
             </Link>
           ))}
         </div>
@@ -97,8 +97,8 @@ export default async function PortalHome() {
                         {r.assignee ? ` · ${r.assignee} is on it` : " · waiting to be picked up"} · {r.ref}
                       </span>
                     </span>
-                    <span className="text-[12px] text-ink-4">{relTime(r.updatedAt)}</span>
-                    <ArrowRight className="size-4 text-ink-4" />
+                    <span className="text-[12px] text-ink-3">{relTime(r.updatedAt)}</span>
+                    <ArrowRight className="size-4 text-ink-3" />
                   </Link>
                 </li>
               ))}
@@ -119,7 +119,7 @@ export default async function PortalHome() {
                 <Link href="/portal/devices" className="row flex items-center gap-3 px-4 py-2.5 text-[13px] first:rounded-t-xl last:rounded-b-xl">
                   {d.type === "mobile" ? <Smartphone className="size-4 text-ink-3" /> : <Laptop className="size-4 text-ink-3" />}
                   <span className="min-w-0 flex-1 truncate font-medium">{d.model ?? d.name}</span>
-                  <span className={`text-[11.5px] ${d.returnedAt ? "text-warn" : d.acknowledgedAt ? "text-ink-4" : "font-medium text-accent-ink"}`}>{d.returnedAt ? "Returned" : d.acknowledgedAt ? "Acknowledged" : "Acknowledge"}</span>
+                  <span className={`text-[11.5px] ${d.returnedAt ? "text-warn" : d.acknowledgedAt ? "text-ink-3" : "font-medium text-accent-ink"}`}>{d.returnedAt ? "Returned" : d.acknowledgedAt ? "Acknowledged" : "Acknowledge"}</span>
                 </Link>
               </li>
             ))}

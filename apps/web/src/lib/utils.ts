@@ -76,3 +76,5 @@ export const STATUS_LABEL: Record<string, string> = {
 export const STATUS_SHORT: Record<string, string> = { open: "Open", pending: "Pending", in_progress: "In progress", pending_approval: "Pending approval", on_hold: "On hold", resolved: "Resolved", closed: "Closed", cancelled: "Cancelled", transferred: "Transferred" };
 export const PRIORITY_LABEL: Record<string, string> = { low: "Low", medium: "Medium", high: "High", urgent: "Urgent" };
 export const KIND_LABEL: Record<string, string> = { incident: "Incident", request: "Request", onboarding: "Onboarding", offboarding: "Offboarding", access: "Access", change: "Change" };
+export type SortKey = "priority" | "updated" | "created" | "due";
+export const SORT_LABEL: Record<SortKey, string> = { priority: "Priority", updated: "Last updated", created: "Created", due: "Due" };

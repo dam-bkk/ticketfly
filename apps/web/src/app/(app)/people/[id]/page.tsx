@@ -7,6 +7,8 @@ import { getPerson } from "@/lib/queries";
 import { money, relTime } from "@/lib/utils";
 import { Topbar } from "@/components/shell/topbar";
 import { Avatar } from "@/components/ui/avatar";
+import { ButtonLink } from "@/components/ui/button";
+import { Empty } from "@/components/ui/empty";
 import { StatusDot, Tone } from "@/components/ui/pills";
 import { TaskList } from "../../journeys/onboarding/task-list";
 
@@ -32,7 +34,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     <>
       <Topbar crumbs={[{ label: "People", href: "/people" }, { label: p.displayName }]} />
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[1100px] px-6 py-6 rise">
+        <div className="mx-auto max-w-[1100px] px-6 py-4 rise">
           <div className="flex items-start gap-5">
             <Avatar name={p.displayName} size={56} />
             <div className="min-w-0 flex-1">
@@ -58,17 +60,17 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             </div>
             <div className="panel min-w-[240px] p-4">
               <p className="label">Cost of this seat</p>
-              <p className="tnum mt-2 text-[26px] font-semibold leading-none tracking-[-0.02em]">{money(cost.monthly)}<span className="text-[13px] font-normal text-ink-3"> / month</span></p>
-              <p className="mt-1.5 text-[12px] text-ink-3">{money(cost.firstYear)} first year incl. {money(cost.oneOff)} hardware</p>
-              <p className="mt-1 text-[11.5px] text-ink-4">{active.length} access grants · {devices.length} devices</p>
+              <p className="tnum mt-2 text-[26px] font-semibold leading-none tracking-[-0.02em]">{money(cost.monthly)}<span className="text-[13.5px] font-normal text-ink-3"> / month</span></p>
+              <p className="mt-1.5 text-[12.5px] text-ink-3">{money(cost.firstYear)} first year incl. {money(cost.oneOff)} hardware</p>
+              <p className="mt-1 text-[11px] text-ink-3">{active.length} access grants · {devices.length} devices</p>
             </div>
           </div>
 
           {onboarding && (
-            <section className="panel mt-6 p-5">
+            <section className="panel mt-3 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-[14px] font-semibold capitalize">{onboarding.kind} plan</h2>
-                <span className="text-[12px] text-ink-3">
+                <h2 className="text-[13.5px] font-semibold capitalize">{onboarding.kind} plan</h2>
+                <span className="text-[12.5px] text-ink-3">
                   {onboarding.kind === "onboarding" ? "Join" : "Last"} date {onboarding.joinDate}
                   {cloneFrom && (
                     <>
@@ -84,24 +86,24 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             </section>
           )}
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+          <div className="mt-3 grid gap-3 lg:grid-cols-[1.2fr_1fr]">
             <section className="panel overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 hairline-b">
-                <h2 className="text-[14px] font-semibold">Access grants</h2>
-                <span className="text-[12px] text-ink-3">What offboarding will revoke</span>
+              <div className="flex items-center justify-between px-4 py-2 hairline-b">
+                <h2 className="text-[13.5px] font-semibold">Access grants</h2>
+                <span className="text-[12.5px] text-ink-3">What offboarding will revoke</span>
               </div>
               {bySystem.length === 0 ? (
-                <p className="px-4 py-6 text-[13px] text-ink-3">No grants recorded. Grants are created by access requests and onboarding.</p>
+                <Empty title="No grants recorded" hint="Grants are created by access requests and by onboarding." action={<ButtonLink href="/portal/new/access-request" size="sm">Request access</ButtonLink>} />
               ) : (
                 <ul className="divide-y divide-line">
                   {bySystem.map(([system, gs]) => (
-                    <li key={system} className="px-4 py-3">
+                    <li key={system} className="px-4 py-2">
                       <p className="mb-1.5 text-[12.5px] font-medium">{system}</p>
                       <ul className="space-y-1">
                         {gs.map((g) => (
-                          <li key={g.id} className="flex items-center gap-3 text-[13px]">
+                          <li key={g.id} className="flex items-center gap-3 text-[13.5px]">
                             <span className="flex-1 text-ink-2">{g.displayName}</span>
-                            <span className="font-mono text-[10.5px] text-ink-4">{g.internalName}</span>
+                            <span className="font-mono text-[11px] text-ink-3">{g.internalName}</span>
                             <span className="tnum w-16 text-right text-ink-3">{Number(g.monthlyCost) ? money(g.monthlyCost) : "—"}</span>
                           </li>
                         ))}
@@ -111,25 +113,25 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                 </ul>
               )}
             </section>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <section className="panel overflow-hidden">
-                <div className="px-4 py-3 hairline-b">
-                  <h2 className="text-[14px] font-semibold">Devices</h2>
+                <div className="px-4 py-2 hairline-b">
+                  <h2 className="text-[13.5px] font-semibold">Devices</h2>
                 </div>
                 {devices.length === 0 ? (
-                  <p className="px-4 py-6 text-[13px] text-ink-3">No devices assigned.</p>
+                  <Empty title="No devices assigned" action={<ButtonLink href="/assets/inventory?status=in_stock" size="sm">Assign from stock</ButtonLink>} />
                 ) : (
                   <ul className="divide-y divide-line">
                     {devices.map((d) => (
                       <li key={d.id}>
-                        <Link href={`/assets/${d.id}`} className="row flex items-center gap-3 px-4 py-2.5 text-[13px]">
+                        <Link href={`/assets/${d.id}`} className="row flex items-center gap-3 px-4 py-2 text-[13.5px]">
                           {d.type === "mobile" ? <Smartphone className="size-4 text-ink-3" /> : <Laptop className="size-4 text-ink-3" />}
                           <span className="min-w-0 flex-1">
                             <span className="block truncate font-medium">{d.model}</span>
                             <span className="block font-mono text-[11px] text-ink-3">{d.assetTag}</span>
                           </span>
                           <span className={`size-1.5 rounded-full ${d.compliance === "compliant" ? "bg-ok" : d.compliance === "non_compliant" ? "bg-crit" : "bg-ink-4"}`} />
-                          <span className="text-[12px] text-ink-3">{d.lastSeenCity}</span>
+                          <span className="text-[12.5px] text-ink-3">{d.lastSeenCity}</span>
                         </Link>
                       </li>
                     ))}
@@ -137,20 +139,20 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                 )}
               </section>
               <section className="panel overflow-hidden">
-                <div className="px-4 py-3 hairline-b">
-                  <h2 className="text-[14px] font-semibold">Tickets</h2>
+                <div className="px-4 py-2 hairline-b">
+                  <h2 className="text-[13.5px] font-semibold">Tickets</h2>
                 </div>
                 {tickets.length === 0 ? (
-                  <p className="px-4 py-6 text-[13px] text-ink-3">No tickets yet.</p>
+                  <Empty title="No tickets yet" action={<ButtonLink href="/portal/new/report-issue" size="sm">New ticket for {p.displayName.split(" ")[0]}</ButtonLink>} />
                 ) : (
                   <ul className="divide-y divide-line">
                     {tickets.map((t) => (
                       <li key={t.id}>
-                        <Link href={`/tickets/${t.id}`} className="row flex items-center gap-3 px-4 py-2.5 text-[13px]">
+                        <Link href={`/tickets/${t.id}`} className="row flex items-center gap-3 px-4 py-2 text-[13.5px]">
                           <StatusDot status={t.status} />
                           <span className="min-w-0 flex-1 truncate">{t.subject}</span>
-                          <span className="font-mono text-[11px] text-ink-4">{t.ref}</span>
-                          <span className="text-[12px] text-ink-4">{relTime(t.createdAt)}</span>
+                          <span className="font-mono text-[11px] text-ink-3">{t.ref}</span>
+                          <span className="text-[12.5px] text-ink-3">{relTime(t.createdAt)}</span>
                         </Link>
                       </li>
                     ))}

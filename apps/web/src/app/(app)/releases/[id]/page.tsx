@@ -54,7 +54,7 @@ export default async function ReleasePage({ params }: { params: Promise<{ id: st
             <Prop label="Start">{r.plannedStart ? longTime(r.plannedStart) : "—"}</Prop>
             <Prop label="End">{r.plannedEnd ? longTime(r.plannedEnd) : "—"}</Prop>
             <Prop label="Owner">{owner ?? "—"}</Prop>
-            <p className="pt-3 text-[11.5px] text-ink-4">Releases inherit their status from their changes: scheduled when all approved, deploying when any is in progress, deployed when all are complete.</p>
+            <p className="pt-3 text-[11.5px] text-ink-3">Releases inherit their status from their changes: scheduled when all approved, deploying when any is in progress, deployed when all are complete.</p>
           </aside>
         </div>
       </div>

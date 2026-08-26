@@ -19,12 +19,12 @@ function Clock({ label, sla, muted }: { label: string; sla: SlaView; muted?: boo
     <div className="mb-3 last:mb-0">
       <div className="flex items-baseline justify-between text-[12.5px]">
         <span className="text-ink-2">{label}</span>
-        <span className={`tnum font-medium ${muted ? "text-ink-4" : tone}`}>{muted ? "—" : sla.label}</span>
+        <span className={`tnum font-medium ${muted ? "text-ink-3" : tone}`}>{muted ? "—" : sla.label}</span>
       </div>
       <div className="bar mt-1.5">
         <i style={{ width: `${Math.round(sla.consumed * 100)}%`, background: color }} />
       </div>
-      <p className="mt-1 text-[11px] text-ink-4">{sla.status === "met" ? "Met" : "Due"} {longTime(sla.dueAt)}</p>
+      <p className="mt-1 text-[11px] text-ink-3">{sla.status === "met" ? "Met" : "Due"} {longTime(sla.dueAt)}</p>
     </div>
   );
 }

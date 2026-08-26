@@ -5,16 +5,25 @@ import { nextStatuses, type TicketStatus } from "@ticketfly/core";
 import { updateTicket } from "@/app/actions";
 import { PRIORITY_LABEL, STATUS_LABEL } from "@/lib/utils";
 import { Select } from "@/components/ui/input";
+import { SavedLine, useSavedAt } from "./saved-at";
 
 type Opt = { id: number; displayName?: string; name?: string; jobTitle?: string | null };
 
 export function Properties({ ticket, agents, groups, categories, department }: { department: string | null; ticket: { id: number; status: TicketStatus; priority: string; assigneeId: number | null; groupId: number | null; categoryId: number | null }; agents: Opt[]; groups: Opt[]; categories: Opt[] }) {
   const [pending, start] = useTransition();
+  const { markSaved } = useSavedAt();
   const statuses = [ticket.status, ...nextStatuses(ticket.status)];
-  const set = (patch: Parameters<typeof updateTicket>[1]) => start(() => updateTicket(ticket.id, patch));
+  const set = (patch: Parameters<typeof updateTicket>[1]) =>
+    start(async () => {
+      await updateTicket(ticket.id, patch);
+      markSaved();
+    });
   return (
     <section className="space-y-3 px-5 py-4" aria-busy={pending}>
-      <p className="label">Properties</p>
+      <div className="flex items-baseline justify-between">
+        <p className="label">Properties</p>
+        <SavedLine />
+      </div>
       <Prop label="Workspace">
         <span className="flex h-8 items-center gap-2 rounded-md bg-surface-2 px-2.5 text-[13px]"><span className="size-2 rounded-sm bg-ok" /> IT Division</span>
       </Prop>
@@ -75,7 +84,7 @@ export function Properties({ ticket, agents, groups, categories, department }: {
 
 function Prop({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[76px_1fr] items-center gap-2">
+    <div className="grid grid-cols-[76px_minmax(0,1fr)] items-center gap-2">
       <span className="text-[12.5px] text-ink-3">{label}</span>
       {children}
     </div>

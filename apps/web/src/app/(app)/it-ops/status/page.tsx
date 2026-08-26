@@ -59,7 +59,7 @@ export default async function StatusPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-[12px] text-ink-4">Public view for staff lands on the portal home as "Good to know". Subscriber email/Teams notifications: Phase 3.</p>
+          <p className="mt-3 text-[12.5px] text-ink-3">Staff see the current status on the portal home under "Good to know".</p>
         </div>
       </div>
     </>

@@ -39,7 +39,7 @@ export function SettingsNav() {
           </li>
         ))}
       </ul>
-      <p className="mt-2 px-1 text-[11px] text-ink-4">Agents see only their workspaces; admins see all.</p>
+      <p className="mt-2 px-1 text-[11px] text-ink-3">Agents see only their workspaces; admins see all.</p>
       <p className="label mb-1.5 mt-5 px-1">Pages</p>
       {PAGES.map(([href, label]) => (
         <Link key={href} href={href} className={cn("block h-8 rounded-md px-2 text-[13px] leading-8 text-ink-2 hover:bg-surface-2 hover:text-ink", path === href && "bg-accent-soft font-medium text-accent-ink hover:bg-accent-soft hover:text-accent-ink")}>

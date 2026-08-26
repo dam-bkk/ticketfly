@@ -8,7 +8,18 @@ import { logActivity } from "@/lib/activity";
 
 type Patch = Partial<Pick<typeof schema.assets.$inferInsert, "impact" | "status" | "usageType" | "lastSeenCity" | "department" | "ownerId" | "managedById" | "managedByGroupId" | "endOfLife" | "assignedOn">>;
 
-/** Right-hand "Edit properties" panel on the asset page — every change logged with before/after. */
+export type AssetField = "impact" | "status" | "usageType" | "location" | "department" | "ownerId" | "managedById" | "managedByGroupId" | "endOfLife";
+const ASSET_FIELDS: readonly AssetField[] = ["impact", "status", "usageType", "location", "department", "ownerId", "managedById", "managedByGroupId", "endOfLife"];
+
+/** Inline edit of a single property on the asset page — same validation, logging and revalidation as the full update. */
+export async function updateAssetField(assetId: number, field: AssetField, value: string) {
+  if (!ASSET_FIELDS.includes(field)) return;
+  const fd = new FormData();
+  fd.set(field, value);
+  await updateAsset(assetId, fd);
+}
+
+/** Property update on the asset page — every change logged with before/after. Only fields present in the form are touched. */
 export async function updateAsset(assetId: number, formData: FormData) {
   const me = await requireStaff();
   const [a] = await db.select().from(schema.assets).where(eq(schema.assets.id, assetId)).limit(1);
@@ -16,6 +27,11 @@ export async function updateAsset(assetId: number, formData: FormData) {
   const str = (k: string) => {
     const v = formData.get(k);
     return v === null ? undefined : String(v);
+  };
+  /** Absent key → untouched; empty string → cleared. */
+  const strOrNull = (k: string) => {
+    const v = str(k);
+    return v === undefined ? undefined : v || null;
   };
   const num = (k: string) => {
     const v = str(k);
@@ -33,12 +49,12 @@ export async function updateAsset(assetId: number, formData: FormData) {
   set("impact", str("impact"));
   set("status", str("status") as Patch["status"]);
   set("usageType", str("usageType"));
-  set("lastSeenCity", str("location") || null);
-  set("department", str("department") || null);
+  set("lastSeenCity", strOrNull("location"));
+  set("department", strOrNull("department"));
   set("ownerId", num("ownerId"));
   set("managedById", num("managedById"));
   set("managedByGroupId", num("managedByGroupId"));
-  set("endOfLife", str("endOfLife") || null);
+  set("endOfLife", strOrNull("endOfLife"));
   if (Object.keys(after).length === 0) return;
   // Re-assignment resets acknowledgement and writes assignment history.
   if ("ownerId" in after) {

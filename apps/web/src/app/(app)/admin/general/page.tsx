@@ -68,7 +68,7 @@ export default async function General() {
           <Button type="button" variant="primary">
             Save changes
           </Button>
-          <span className="font-mono text-[11.5px] text-ink-4">
+          <span className="font-mono text-[11.5px] text-ink-3">
             v{APP_VERSION} · {APP_ENV}
           </span>
         </div>

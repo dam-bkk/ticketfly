@@ -1,15 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
-import { replyToTicket } from "@/app/actions";
 import { requirePrincipal } from "@/lib/auth";
 import { getTicket } from "@/lib/queries";
 import { cn, longTime, relTime, shortTime } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/input";
 import { Markdown } from "@/components/ui/markdown";
-import { uploadAttachment } from "@/app/extra-actions";
+import { PortalComposer } from "./composer";
 import { db, schema } from "@ticketfly/db";
 import { asc, eq } from "drizzle-orm";
 import { Paperclip } from "lucide-react";
@@ -20,7 +17,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
   const { new: isNew } = await searchParams;
   const data = await getTicket(Number(id));
   if (!data) notFound();
-  const { ticket: t, requester, messages, assignee, sla } = data;
+  const { ticket: t, requester, messages, assignee, sla, groupName } = data;
   const staff = me.role === "agent" || me.role === "admin" || me.role === "hr";
   if (!staff && t.requesterId !== me.id) redirect("/portal");
   const visible = messages.filter(({ m }) => m.kind !== "note");
@@ -55,7 +52,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
         {steps.map((s, i) => (
           <li key={s} className="text-[12px]">
             <div className={cn("h-1 rounded-full", i <= stepIdx ? (i === 3 ? "bg-ok" : "bg-accent") : "bg-surface-3")} />
-            <p className={cn("mt-1.5 font-medium", i <= stepIdx ? "text-ink" : "text-ink-4")}>{s}</p>
+            <p className={cn("mt-1.5 font-medium", i <= stepIdx ? "text-ink" : "text-ink-3")}>{s}</p>
             {i === stepIdx && !closed && <p className="text-ink-3">{t.status === "pending" ? "Waiting for your reply" : t.status === "on_hold" ? "Waiting on a third party" : assignee ? `${assignee.displayName.split(" ")[0]} is on it` : `Expected reply ${relTime(sla.first.dueAt)}`}</p>}
             {i === 3 && closed && <p className="text-ink-3">{t.resolvedAt ? relTime(t.resolvedAt) : ""}</p>}
           </li>
@@ -63,12 +60,14 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
       </ol>
 
       {assignee && (
-        <div className="mt-6 flex items-center gap-3 rounded-xl bg-surface p-4 hairline">
+        <div className="mt-6 flex items-center gap-3 rounded-xl bg-surface px-4 py-3 hairline">
           <Avatar name={assignee.displayName} size={36} />
-          <div className="text-[13px]">
-            <p className="font-medium">{assignee.displayName}</p>
-            <p className="text-ink-3">{assignee.jobTitle} · IT</p>
+          <div className="min-w-0 text-[13px]">
+            <p className="eyebrow">Handled by</p>
+            <p className="mt-0.5 truncate font-medium text-ink">{assignee.displayName}</p>
+            <p className="truncate text-ink-3">{[assignee.jobTitle, groupName ?? "IT Service Desk"].filter(Boolean).join(" · ")}</p>
           </div>
+          {!closed && <span className="ml-auto shrink-0 text-[12px] text-ink-3">{t.status === "pending" ? "Waiting for you" : "On it"}</span>}
         </div>
       )}
 
@@ -76,7 +75,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
         <Message name={requester?.displayName ?? ""} mine={requester?.id === me.id} time={t.createdAt} body={t.description} />
         {visible.map(({ m, author }) =>
           m.kind === "system" ? (
-            <p key={m.id} className="px-2 text-center text-[12px] text-ink-4">
+            <p key={m.id} className="px-2 text-center text-[12px] text-ink-3">
               {m.body} · {relTime(m.createdAt)}
             </p>
           ) : (
@@ -96,21 +95,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
         </section>
       )}
       {!closed ? (
-        <>
-          <form action={replyToTicket.bind(null, t.id)} className="mt-6 rounded-2xl bg-surface p-4 shadow-1 hairline">
-            <Textarea name="body" required placeholder={t.status === "pending" ? "IT is waiting for your reply…" : "Add more detail or ask a question"} className="min-h-20 shadow-none focus:shadow-none" />
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-[12px] text-ink-3">Replies also go by email — you can answer from your inbox.</span>
-              <Button type="submit" variant="primary">Send</Button>
-            </div>
-          </form>
-          <form action={uploadAttachment.bind(null, t.id)} className="mt-2 flex items-center gap-2 px-1 text-[12.5px] text-ink-3">
-            <Paperclip className="size-3.5" />
-            <input type="file" name="files" multiple className="text-[12px]" />
-            <Button type="submit" variant="ghost" size="sm">Attach</Button>
-            <span className="text-ink-4">screenshots help — under 40 MB each</span>
-          </form>
-        </>
+        <PortalComposer ticketId={t.id} status={t.status} canClose={t.requesterId === me.id} />
       ) : (
         <div className="mt-6 rounded-2xl bg-surface p-5 text-center hairline">
           <p className="text-[14px] font-medium">How did we do?</p>
@@ -122,7 +107,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
               </button>
             ))}
           </div>
-          <p className="mt-3 text-[12px] text-ink-4">Not fixed? Reply to the email and it reopens automatically.</p>
+          <p className="mt-3 text-[12px] text-ink-3">Not fixed? Reply to the email and it reopens automatically.</p>
         </div>
       )}
     </div>
@@ -137,7 +122,7 @@ function Message({ name, mine, time, body, it }: { name: string; mine: boolean; 
         <p className="flex items-baseline gap-2 text-[12px]">
           <span className="font-medium text-ink">{name}</span>
           {it && !mine && <span className="text-ink-3">IT</span>}
-          <span className="text-ink-4">{shortTime(time)}</span>
+          <span className="text-ink-3">{shortTime(time)}</span>
         </p>
         <Markdown text={body} className="mt-1 text-[13.5px] leading-relaxed" />
       </div>

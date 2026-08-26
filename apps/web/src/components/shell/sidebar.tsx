@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Activity, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronDown, ClipboardList, FolderKanban, Gauge, GitBranch, Kanban, LayoutList, Repeat, Route, Settings, ShieldCheck, SlidersHorizontal, Ticket, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Logo } from "@/components/ui/logo";
+import { QiMark } from "@/components/ui/logo";
 import { Avatar } from "@/components/ui/avatar";
 import { PersonaMenu } from "./persona-menu";
 
@@ -14,6 +14,8 @@ type Group = { label: string; icon: React.ReactNode; children: Leaf[]; defaultOp
 type Item = Leaf | Group;
 
 const isGroup = (i: Item): i is Group => "children" in i;
+
+/** Responsive contract: full 220px rail at ≥1200px; below that an icon-only 48px rail (labels via `title`, badges kept). */
 
 export function Sidebar({ me, counts, version, hidden = [] }: { me: { displayName: string; jobTitle: string | null; role: string }; counts: { open: number; mine: number; atRisk: number; onboarding: number; approvals?: number; tasks?: number; alerts?: number }; version: string; hidden?: string[] }) {
   const path = usePathname();
@@ -35,35 +37,37 @@ export function Sidebar({ me, counts, version, hidden = [] }: { me: { displayNam
   ];
   const items = all.filter(([key]) => !hidden.includes(key)).map(([, it]) => it);
   return (
-    <aside className="flex h-full w-[220px] shrink-0 flex-col bg-surface hairline-r">
-      <div className="flex h-12 items-center px-4">
-        <Link href="/dashboard" className="rounded-md">
-          <Logo size={20} />
+    <aside className={cn("flex h-full w-12 shrink-0 flex-col bg-surface hairline-r", "min-[1200px]:w-[220px]")}>
+      <div className={cn("flex h-12 items-center justify-center", "min-[1200px]:justify-start min-[1200px]:px-4")}>
+        <Link href="/dashboard" title="Service Desk" className="inline-flex items-center gap-2 rounded-md leading-none">
+          <QiMark size={20} />
+          <span className={cn("hidden text-[13.5px] font-medium tracking-[-0.01em] text-ink", "min-[1200px]:inline")}>Service Desk</span>
         </Link>
       </div>
-      <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1">
+      <nav className={cn("flex-1 overflow-y-auto px-1 pb-2 pt-1", "min-[1200px]:px-2")}>
         <ul className="space-y-px">
           {items.map((it) => (
             <li key={isGroup(it) ? it.label : it.href}>{isGroup(it) ? <GroupRow g={it} path={path} /> : <LeafRow l={it} path={path} top />}</li>
           ))}
         </ul>
-        <div className="mt-3 px-2 pt-3 hairline-t">
-          <Link href="/admin/sidebar" className="flex h-8 items-center gap-2.5 rounded-md px-2 text-[12.5px] text-ink-3 hover:bg-surface-2 hover:text-ink">
-            <SlidersHorizontal className="size-3.5" /> Customize sidebar
+        <div className={cn("mt-3 pt-3 hairline-t", "min-[1200px]:px-2")}>
+          <Link href="/admin/sidebar" title="Customize sidebar" className={cn("flex h-8 items-center justify-center gap-2.5 rounded-md text-[12.5px] text-ink-3 hover:bg-surface-2 hover:text-ink", "min-[1200px]:justify-start min-[1200px]:px-2")}>
+            <SlidersHorizontal className="size-3.5" /> <span className={cn("hidden", "min-[1200px]:inline")}>Customize sidebar</span>
           </Link>
         </div>
       </nav>
-      <div className="p-2 hairline-t">
+      {/* pb-12 reserves the bottom-left zone that dev overlays (Next indicator, View-as bar) sit over. */}
+      <div className="p-2 pb-12 hairline-t">
         <PersonaMenu me={me}>
-          <button className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-2">
+          <button title={`${me.displayName} · ${me.jobTitle ?? me.role}`} className={cn("flex w-full items-center justify-center gap-2.5 rounded-md px-1 py-2 text-left transition-colors hover:bg-surface-2", "min-[1200px]:justify-start min-[1200px]:px-2")}>
             <Avatar name={me.displayName} size={26} />
-            <span className="min-w-0 flex-1">
+            <span className={cn("hidden min-w-0 flex-1", "min-[1200px]:block")}>
               <span className="block truncate text-[12.5px] font-medium">{me.displayName}</span>
               <span className="block truncate text-[11px] text-ink-3">{me.jobTitle ?? me.role}</span>
             </span>
           </button>
         </PersonaMenu>
-        <p className="mt-1 flex items-center gap-1.5 px-2 font-mono text-[10.5px] text-ink-4">
+        <p className={cn("mt-1 hidden items-center gap-1.5 px-2 font-mono text-[11px] text-ink-3", "min-[1200px]:flex")}>
           <ShieldCheck className="size-3" /> v{version} · dev
         </p>
       </div>
@@ -76,14 +80,36 @@ function active(path: string, href: string) {
   return path === href || path.startsWith(href + "/");
 }
 
+function Badge({ n, tone, on, collapsed }: { n?: number; tone?: "warn"; on?: boolean; collapsed?: boolean }) {
+  if (!n) return null;
+  const tint = tone === "warn" ? "bg-warn-soft text-warn" : on ? "bg-surface text-accent-ink" : "bg-surface-2 text-ink-3";
+  return collapsed ? (
+    <span className={cn("tnum absolute -right-0.5 -top-0.5 rounded px-1 text-[11px] font-medium leading-4", tint, "min-[1200px]:hidden")}>{n}</span>
+  ) : (
+    <span className={cn("tnum hidden rounded px-1.5 text-[11px] font-medium", tint, "min-[1200px]:inline")}>{n}</span>
+  );
+}
+
 function LeafRow({ l, path, top }: { l: Leaf; path: string; top?: boolean }) {
   const on = active(path, l.href);
+  const base = "group relative flex h-8 items-center gap-2.5 rounded-md text-[13.5px] text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink";
+  const onCls = on && "bg-accent-soft text-accent-ink hover:bg-accent-soft hover:text-accent-ink";
+  if (!top) {
+    // Sub-items only exist in the wide rail; the collapsed rail shows their parent group as one icon.
+    return (
+      <Link href={l.href} title={l.label} className={cn(base, "hidden pl-8 pr-2", "min-[1200px]:flex", onCls)}>
+        {l.icon && <span className={cn("-ml-5 mr-0.5 text-ink-3", on && "text-accent-ink")}>{l.icon}</span>}
+        <span className="flex-1 truncate">{l.label}</span>
+        <Badge n={l.badge} tone={l.tone} on={on} />
+      </Link>
+    );
+  }
   return (
-    <Link href={l.href} className={cn("group flex h-8 items-center gap-2.5 rounded-md text-[13px] text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink", top ? "px-2 font-medium" : "pl-8 pr-2", on && "bg-accent-soft text-accent-ink hover:bg-accent-soft hover:text-accent-ink")}>
-      {top && <span className={cn("text-ink-3 group-hover:text-ink", on && "text-accent-ink group-hover:text-accent-ink")}>{l.icon}</span>}
-      {!top && l.icon && <span className={cn("-ml-5 mr-0.5 text-ink-4", on && "text-accent-ink")}>{l.icon}</span>}
-      <span className="flex-1 truncate">{l.label}</span>
-      {l.badge ? <span className={cn("tnum rounded px-1.5 text-[11px] font-medium", l.tone === "warn" ? "bg-warn-soft text-warn" : "bg-surface-2 text-ink-3", on && l.tone !== "warn" && "bg-surface text-accent-ink")}>{l.badge}</span> : null}
+    <Link href={l.href} title={l.label} className={cn(base, "justify-center font-medium", "min-[1200px]:justify-start min-[1200px]:px-2", onCls)}>
+      <span className={cn("text-ink-3 group-hover:text-ink", on && "text-accent-ink group-hover:text-accent-ink")}>{l.icon}</span>
+      <span className={cn("hidden flex-1 truncate", "min-[1200px]:block")}>{l.label}</span>
+      <Badge n={l.badge} tone={l.tone} on={on} />
+      <Badge n={l.badge} tone={l.tone} on={on} collapsed />
     </Link>
   );
 }
@@ -91,15 +117,24 @@ function LeafRow({ l, path, top }: { l: Leaf; path: string; top?: boolean }) {
 function GroupRow({ g, path }: { g: Group; path: string }) {
   const childActive = g.children.some((c) => active(path, c.href));
   const [open, setOpen] = useState(g.defaultOpen || childActive);
+  const first = g.children[0]!;
+  const badge = g.children.reduce((n, c) => n + (c.badge ?? 0), 0);
+  const tone = g.children.find((c) => c.badge && c.tone === "warn") ? "warn" : undefined;
   return (
     <div>
-      <button onClick={() => setOpen((o) => !o)} className={cn("group flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-[13px] font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink", childActive && !open && "text-ink")}>
+      {/* Collapsed rail: the group is one icon linking to its first page, with the summed badge. */}
+      <Link href={first.href} title={g.label} className={cn("group relative flex h-8 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink", "min-[1200px]:hidden", childActive && "bg-accent-soft text-accent-ink hover:bg-accent-soft hover:text-accent-ink")}>
+        <span className={cn("text-ink-3 group-hover:text-ink", childActive && "text-accent-ink group-hover:text-accent-ink")}>{g.icon}</span>
+        <Badge n={badge} tone={tone} on={childActive} collapsed />
+      </Link>
+      <button onClick={() => setOpen((o) => !o)} className={cn("group hidden h-8 w-full items-center gap-2.5 rounded-md px-2 text-[13.5px] font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink", "min-[1200px]:flex", childActive && !open && "text-ink")}>
         <span className="text-ink-3 group-hover:text-ink">{g.icon}</span>
         <span className="flex-1 truncate text-left">{g.label}</span>
-        <ChevronDown className={cn("size-3.5 text-ink-4 transition-transform", open && "rotate-180")} />
+        {!open && <Badge n={badge} tone={tone} />}
+        <ChevronDown className={cn("size-3.5 text-ink-3 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <ul className="mt-px space-y-px">
+        <ul className={cn("mt-px hidden space-y-px", "min-[1200px]:block")}>
           {g.children.map((c) => (
             <li key={c.href}>
               <LeafRow l={c} path={path} />
@@ -110,4 +145,3 @@ function GroupRow({ g, path }: { g: Group; path: string }) {
     </div>
   );
 }
-

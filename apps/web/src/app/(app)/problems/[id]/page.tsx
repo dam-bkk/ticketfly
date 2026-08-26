@@ -8,10 +8,10 @@ import { longTime, relTime } from "@/lib/utils";
 import { Topbar } from "@/components/shell/topbar";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Select, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/input";
 import { PriorityMark, StatusDot, Tone } from "@/components/ui/pills";
 import { Block, CHANGE_STATUS_LABEL, NextStep, PROBLEM_STATUS_LABEL, Prop, RecordHeader, RefLink, RISK_TONE } from "@/components/ui/record";
-import { TaskList } from "@/components/ui/task-list";
+import { RecordTasks } from "@/app/(app)/tickets/[id]/tasks";
 
 export default async function ProblemPage({ params }: { params: Promise<{ id: string }> }) {
   await requireStaff();
@@ -53,13 +53,13 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
               )}
               {(p.status === "open" || p.status === "known_error") && !p.changeId && (
                 <form action={raiseChangeFromProblem.bind(null, p.id)}>
-                  <Button type="submit" size="sm" variant="primary">Raise change</Button>
+                  <Button type="submit" size="sm" variant="secondary">Raise change</Button>
                 </form>
               )}
               {(p.status === "open" || p.status === "known_error") && (
                 <form action={updateProblem.bind(null, p.id)}>
                   <input type="hidden" name="status" value="resolved" />
-                  <Button type="submit" size="sm" variant="ghost">Resolve</Button>
+                  <Button type="submit" size="sm" variant="primary">Resolve</Button>
                 </form>
               )}
               {p.status === "resolved" && (
@@ -73,23 +73,50 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
         />
         <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_320px] overflow-y-auto">
           <div className="space-y-4 px-6 py-4">
-            {next && <NextStep label={next.label} hint={next.hint} />}
+            {next && (
+              <NextStep label={next.label} hint={next.hint}>
+                {p.status === "open" && p.rootCause && (
+                  <form action={updateProblem.bind(null, p.id)}>
+                    <input type="hidden" name="status" value="known_error" />
+                    <Button type="submit" size="sm" variant="primary">Mark known error</Button>
+                  </form>
+                )}
+                {p.status === "known_error" && !p.changeId && (
+                  <form action={raiseChangeFromProblem.bind(null, p.id)}>
+                    <Button type="submit" size="sm" variant="primary">Raise change</Button>
+                  </form>
+                )}
+                {p.status === "resolved" && (
+                  <form action={updateProblem.bind(null, p.id)}>
+                    <input type="hidden" name="status" value="closed" />
+                    <Button type="submit" size="sm" variant="primary">Close</Button>
+                  </form>
+                )}
+              </NextStep>
+            )}
             <Block title="Description">
               <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed">{p.description || "—"}</p>
             </Block>
-            <form action={updateProblem.bind(null, p.id)} className="grid gap-4 md:grid-cols-3">
-              <Block title="Workaround" className="md:col-span-1">
-                <Textarea name="workaround" defaultValue={p.workaround ?? ""} placeholder="What agents can tell users right now" className="min-h-28 text-[13px]" />
-              </Block>
-              <Block title="Root cause">
-                <Textarea name="rootCause" defaultValue={p.rootCause ?? ""} placeholder="What is actually wrong" className="min-h-28 text-[13px]" />
-              </Block>
-              <Block title="Permanent fix">
-                <Textarea name="permanentFix" defaultValue={p.permanentFix ?? ""} placeholder="What the change will do" className="min-h-28 text-[13px]" />
-                <div className="mt-3 flex justify-end">
-                  <Button type="submit" size="sm" variant="secondary">Save analysis</Button>
-                </div>
-              </Block>
+            {/* Analysis: the textarea IS the panel body (no nested panel), one footer under all three. */}
+            <form action={updateProblem.bind(null, p.id)} className="panel overflow-hidden">
+              <div className="grid md:grid-cols-3 md:divide-x md:divide-line max-md:divide-y max-md:divide-line">
+                {(
+                  [
+                    ["workaround", "Workaround", "What agents can tell users right now", p.workaround],
+                    ["rootCause", "Root cause", "What is actually wrong", p.rootCause],
+                    ["permanentFix", "Permanent fix", "What the change will do", p.permanentFix],
+                  ] as const
+                ).map(([name, title, placeholder, value]) => (
+                  <label key={name} className="block min-w-0">
+                    <span className="flex h-10 items-center px-4 text-[13px] font-semibold hairline-b">{title}</span>
+                    <textarea name={name} defaultValue={value ?? ""} placeholder={placeholder} className="block min-h-36 w-full resize-none bg-transparent px-4 py-3 text-[13.5px] leading-relaxed text-ink outline-none placeholder:text-ink-3 focus:bg-surface-2/40" />
+                  </label>
+                ))}
+              </div>
+              <div className="flex items-center justify-between px-4 py-2.5 hairline-t">
+                <span className="text-[12px] text-ink-3">The workaround shows on every linked ticket; the permanent fix pre-fills the change.</span>
+                <Button type="submit" size="sm" variant="secondary">Save analysis</Button>
+              </div>
             </form>
             <Block title={`Linked incidents · ${incidents.length}`} action={<span className="text-[12px] text-ink-3">Every linked ticket shows the workaround to its agent</span>}>
               {incidents.length === 0 ? <p className="text-[13px] text-ink-3">No incidents linked yet.</p> : (
@@ -101,7 +128,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
                       <RefLink href={`/tickets/${t.id}`}>{t.subject}</RefLink>
                       <span className="ml-auto text-[12px] text-ink-3">{t.requester}</span>
                       <PriorityMark priority={t.priority} />
-                      <span className="w-16 text-right text-[12px] text-ink-4">{relTime(t.createdAt)}</span>
+                      <span className="w-16 text-right text-[12px] text-ink-3">{relTime(t.createdAt)}</span>
                     </li>
                   ))}
                 </ul>
@@ -124,10 +151,10 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
               )}
             </Block>
             <Block title="Tasks">
-              <TaskList rows={tasks} parentType="problem" parentId={p.id} back={back} />
+              <RecordTasks rows={tasks} parentType="problem" parentId={p.id} back={back} />
             </Block>
           </div>
-          <aside className="space-y-4 bg-surface px-4 py-4 hairline-l">
+          <aside className="min-w-0 space-y-4 bg-surface px-4 py-4 hairline-l">
             <form action={updateProblem.bind(null, p.id)} className="space-y-2">
               <p className="label">Properties</p>
               <Prop label="Assignee">
@@ -172,12 +199,12 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
                 {activity.slice(0, 8).map((a) => (
                   <li key={a.id} className="flex items-center gap-2 text-[12px] text-ink-3">
                     <Avatar name={a.actorName} size={16} />
-                    <span className="font-medium text-ink-2">{a.actorName}</span> <span className="font-mono text-[11px]">{a.action}</span> <span className="text-ink-4">· {relTime(a.ts)}</span>
+                    <span className="font-medium text-ink-2">{a.actorName}</span> <span className="font-mono text-[11px]">{a.action}</span> <span className="text-ink-3">· {relTime(a.ts)}</span>
                   </li>
                 ))}
               </ul>
             </div>
-            {assignee && <p className="text-[11px] text-ink-4">Owned by {assignee}</p>}
+            {assignee && <p className="text-[11px] text-ink-3">Owned by {assignee}</p>}
           </aside>
         </div>
       </div>

@@ -16,7 +16,7 @@ export function WorkspaceSwitcher({ current, allowed }: { current: W; allowed: W
         <button className="flex h-8 items-center gap-2 rounded-md px-2 text-[13px] font-medium text-ink hover:bg-surface-2" aria-busy={pending}>
           <span className="flex size-5 items-center justify-center rounded bg-accent-soft text-accent-ink">{ICONS[current.icon] ?? ICONS.monitor}</span>
           {current.name}
-          <ChevronDown className="size-3.5 text-ink-4" />
+          <ChevronDown className="size-3.5 text-ink-3" />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -30,7 +30,7 @@ export function WorkspaceSwitcher({ current, allowed }: { current: W; allowed: W
               {w.slug === current.slug && <Check className="size-3.5 text-accent-ink" />}
             </DropdownMenu.Item>
           ))}
-          <p className="px-2 pb-1 pt-1.5 text-[11px] text-ink-4">Tickets, assets and projects are filtered to the workspace you are in.</p>
+          <p className="px-2 pb-1 pt-1.5 text-[11px] text-ink-3">Tickets, assets and projects are filtered to the workspace you are in.</p>
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

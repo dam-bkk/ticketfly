@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Bold, Italic, Link2, List, Lock, Paperclip, Send, Wand2 } from "lucide-react";
+import { Bold, Italic, Link2, List, Lock, MessageSquareReply, MessageSquareText, Paperclip, Send, Wand2 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { replyToTicket, updateTicket } from "@/app/actions";
 import { applyScenario, uploadAttachment } from "@/app/extra-actions";
@@ -80,27 +80,43 @@ export function Composer({ ticketId, status, requesterName, scenarios }: { ticke
         }}
         className={cn("rounded-xl bg-surface shadow-2 transition-colors hairline", kind === "note" && "bg-note")}
       >
-        <div className="flex items-center gap-1 px-3 pt-2">
-          {(["reply", "note"] as const).map((k) => (
-            <button key={k} type="button" onClick={() => setKind(k)} className={cn("flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium text-ink-3 hover:text-ink", kind === k && "bg-surface-2 text-ink")}>
-              {k === "note" && <Lock className="size-3" />}
-              {k === "reply" ? `Reply to ${requesterName.split(" ")[0]}` : "Internal note"}
-            </button>
-          ))}
-          <span className="mx-1 h-4 w-px bg-line" />
-          <Tool label="Bold (⌘B)" onClick={() => wrap("**")}><Bold className="size-3.5" /></Tool>
-          <Tool label="Italic (⌘I)" onClick={() => wrap("_")}><Italic className="size-3.5" /></Tool>
-          <Tool label="Bulleted list" onClick={() => prefixLines("- ")}><List className="size-3.5" /></Tool>
-          <Tool label="Link" onClick={() => wrap("[", "](https://)")}><Link2 className="size-3.5" /></Tool>
-          <div className="ml-auto flex items-center gap-1">
-            {CANNED.map(([label, text]) => (
-              <button key={label} type="button" onClick={() => { if (ref.current) { ref.current.value = text ?? ""; ref.current.focus(); } }} className="h-6 rounded px-2 text-[11.5px] text-ink-3 hover:bg-surface-2 hover:text-ink">
-                {label}
+        {/* One row, never wraps: mode tabs (icon + short label under 1400px) · formatting · compact secondary group. */}
+        <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap px-3 pt-2">
+          <div role="tablist" aria-label="Message type" className="flex min-w-0 shrink items-center gap-0.5 overflow-x-auto [scrollbar-width:none]">
+            {(["reply", "note"] as const).map((k) => (
+              <button key={k} role="tab" aria-selected={kind === k} type="button" onClick={() => setKind(k)} className={cn("flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] font-medium text-ink-3 hover:text-ink", kind === k && "bg-surface-2 text-ink")}>
+                {k === "note" ? <Lock className="size-3" /> : <MessageSquareReply className="size-3.5" />}
+                <span className="max-[1400px]:hidden">{k === "reply" ? `Reply to ${requesterName.split(" ")[0]}` : "Internal note"}</span>
+                <span className="min-[1400px]:hidden">{k === "reply" ? "Reply" : "Note"}</span>
               </button>
             ))}
+          </div>
+          <span className="mx-1 h-4 w-px shrink-0 bg-line" />
+          <div className="flex shrink-0 items-center gap-0.5">
+            <Tool label="Bold (⌘B)" onClick={() => wrap("**")}><Bold className="size-3.5" /></Tool>
+            <Tool label="Italic (⌘I)" onClick={() => wrap("_")}><Italic className="size-3.5" /></Tool>
+            <Tool label="Bulleted list" onClick={() => prefixLines("- ")}><List className="size-3.5" /></Tool>
+            <Tool label="Link" onClick={() => wrap("[", "](https://)")}><Link2 className="size-3.5" /></Tool>
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-0.5">
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
-                <button type="button" className="inline-flex h-6 items-center gap-1 rounded px-2 text-[11.5px] font-medium text-accent-ink hover:bg-accent-soft"><Wand2 className="size-3" /> Scenarios</button>
+                <button type="button" title="Templates" className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[12.5px] text-ink-3 hover:bg-surface-2 hover:text-ink"><MessageSquareText className="size-3.5" /> <span className="max-[1400px]:hidden">Templates</span></button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content align="end" sideOffset={6} className="z-50 w-80 rounded-lg bg-surface p-1 shadow-3 hairline">
+                  {CANNED.map(([label, text]) => (
+                    <DropdownMenu.Item key={label} onSelect={() => { if (ref.current) { ref.current.value = text ?? ""; ref.current.focus(); } }} className="cursor-pointer rounded-md px-2.5 py-2 outline-none data-[highlighted]:bg-surface-2">
+                      <span className="block text-[13px] font-medium">{label}</span>
+                      <span className="block truncate text-[12px] text-ink-3">{text}</span>
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button type="button" title="Scenarios" className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium text-accent-ink hover:bg-accent-soft"><Wand2 className="size-3.5" /> <span className="max-[1400px]:hidden">Scenarios</span></button>
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content align="end" sideOffset={6} className="z-50 w-80 rounded-lg bg-surface p-1 shadow-3 hairline">
@@ -116,15 +132,15 @@ export function Composer({ ticketId, status, requesterName, scenarios }: { ticke
           </div>
         </div>
         <textarea ref={ref} name="body" required placeholder={kind === "note" ? "Visible to IT only…" : "Write a reply… it goes out by email and shows in the portal. **bold**, _italic_, - lists, links."} className="block min-h-[96px] w-full resize-none bg-transparent px-4 py-3 text-[13.5px] leading-relaxed outline-none" />
-        <div className="flex items-center gap-2 px-3 pb-3">
+        <div className="flex items-center gap-2 overflow-hidden px-3 pb-3">
           <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => setFiles([...(e.target.files ?? [])].map((f) => f.name))} />
           <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[12px] text-ink-3 hover:bg-surface-2 hover:text-ink" aria-label="Attach files">
-            <Paperclip className="size-4" /> {files.length ? files.join(", ") : "Attach files"} <span className="text-ink-4">(&lt; 40 MB)</span>
+            <Paperclip className="size-4" /> <span className="max-w-[240px] truncate">{files.length ? files.join(", ") : "Attach files"}</span> <span className="text-ink-3">(&lt; 40 MB)</span>
           </button>
-          <span className="text-[11.5px] text-ink-4">
+          <span className="whitespace-nowrap text-[11px] text-ink-3">
             <Kbd>⌘</Kbd> <Kbd>↵</Kbd> to send
           </span>
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
             {kind === "reply" && status !== "resolved" && status !== "closed" && (
               <>
                 <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => formRef.current && submit(new FormData(formRef.current), "pending")}>Send &amp; wait for reply</Button>

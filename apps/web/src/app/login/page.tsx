@@ -25,7 +25,7 @@ export default async function Login() {
             <p className="text-[40px] font-semibold leading-[1.08] tracking-[-0.03em]">
               Every request, <span className="font-normal text-canvas/60 dark:text-ink-3">from hello to goodbye.</span>
             </p>
-            <p className="mt-4 text-[14px] leading-relaxed text-canvas/70 dark:text-ink-2">Tickets, devices, joiners and leavers in one place — with the whole Freshservice history behind it.</p>
+            <p className="mt-4 text-[13.5px] leading-relaxed text-canvas/70 dark:text-ink-2">Tickets, devices, joiners and leavers in one place — with the whole Freshservice history behind it.</p>
           </div>
           <p className="font-mono text-[11px] text-canvas/40 dark:text-ink-3">IT QI Group · internal · dev environment</p>
         </div>
@@ -34,22 +34,22 @@ export default async function Login() {
         <div className="w-full max-w-sm">
           <Logo className="mb-8 lg:hidden" />
           <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Sign in</h1>
-          <p className="mt-1 text-[13px] text-ink-3">Production uses your Microsoft account. In dev, pick a persona to see the product from their seat.</p>
+          <p className="mt-1 text-[13.5px] text-ink-3">Production uses your Microsoft account. In dev, pick a persona to see the product from their seat.</p>
           <div className="mt-6 space-y-1.5">
             {list.map((p) => (
               <form key={p.id} action={signInAs.bind(null, p.id)}>
-                <button className="group flex w-full items-center gap-3 rounded-lg bg-surface px-3 py-2.5 text-left transition-all hairline hover:shadow-2">
+                <button className="persona-row group flex w-full items-center gap-3 rounded-lg bg-surface px-3 py-2.5 text-left hairline">
                   <Avatar name={p.displayName} size={32} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13.5px] font-medium">{p.displayName}</span>
-                    <span className="block truncate text-[12px] text-ink-3">{p.jobTitle} · {p.department}</span>
+                    <span className="block truncate text-[12.5px] text-ink-3">{p.jobTitle} · {p.department}</span>
                   </span>
                   <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-ink-2">{p.role === "hr" ? "HR" : p.role[0]!.toUpperCase() + p.role.slice(1)}</span>
                 </button>
               </form>
             ))}
           </div>
-          <p className="mt-8 text-center text-[12px] text-ink-4">Entra ID · single sign-on · no passwords stored</p>
+          <p className="mt-8 text-center text-[12.5px] text-ink-3">Entra ID · single sign-on · no passwords stored</p>
         </div>
       </section>
     </main>

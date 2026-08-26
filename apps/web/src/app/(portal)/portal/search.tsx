@@ -47,7 +47,7 @@ export function PortalSearch({ services }: { services: S[] }) {
           className="flex-1 bg-transparent text-[15px] outline-none"
         />
         {q && (
-          <span className="hidden text-[11.5px] text-ink-4 sm:inline">
+          <span className="hidden text-[11.5px] text-ink-3 sm:inline">
             press <kbd className="rounded px-1 hairline">↵</kbd>
           </span>
         )}
@@ -64,7 +64,7 @@ export function PortalSearch({ services }: { services: S[] }) {
                   <span className="block text-[13.5px] font-medium">{s.name}</span>
                   <span className="block truncate text-[12px] text-ink-3">{s.tagline}</span>
                 </span>
-                <ArrowRight className="size-4 text-ink-4" />
+                <ArrowRight className="size-4 text-ink-3" />
               </button>
             </li>
           ))}

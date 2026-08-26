@@ -79,7 +79,7 @@ export default async function ProblemsPage({ searchParams }: { searchParams: Pro
                   </td>
                   <td className="tnum px-4 py-2.5 text-right font-medium">{incidents}</td>
                   <td className="px-4 py-2.5 text-ink-2">{group ?? "—"}</td>
-                  <td className="px-4 py-2.5">{assignee ? <span className="flex items-center gap-2"><Avatar name={assignee} size={20} />{assignee}</span> : <span className="text-ink-4">Unassigned</span>}</td>
+                  <td className="px-4 py-2.5">{assignee ? <span className="flex items-center gap-2"><Avatar name={assignee} size={20} />{assignee}</span> : <span className="text-ink-3">Unassigned</span>}</td>
                   <td className="tnum px-4 py-2.5 text-right text-ink-3">{relTime(p.updatedAt)}</td>
                 </tr>
               ))}

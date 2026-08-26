@@ -31,7 +31,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{t.subject}</span>
                   <span className="text-[12px] text-ink-3">{t.requester}</span>
                   <StatusPill status={t.status} />
-                  <span className="w-20 text-right text-[12px] text-ink-4">{relTime(t.createdAt)}</span>
+                  <span className="w-20 text-right text-[12px] text-ink-3">{relTime(t.createdAt)}</span>
                 </Link>
               ))}
             </Section>

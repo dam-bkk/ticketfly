@@ -34,7 +34,7 @@ export default async function WorkspacesPage() {
               <ul className="mt-3 flex flex-wrap gap-1.5">
                 {ms.map((m) => (
                   <li key={m.m.personId} className="flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 text-[12.5px] hairline">
-                    <Avatar name={m.name ?? "?"} size={20} /> {m.name} <span className="text-ink-4">{m.m.role}</span>
+                    <Avatar name={m.name ?? "?"} size={20} /> {m.name} <span className="text-ink-3">{m.m.role}</span>
                     <form action={removeWorkspaceMember.bind(null, w.slug, m.m.personId)}>
                       <button type="submit" aria-label="Remove" className="rounded-full p-0.5 text-ink-3 hover:bg-surface-2 hover:text-ink"><X className="size-3" /></button>
                     </form>

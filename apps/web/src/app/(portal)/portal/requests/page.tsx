@@ -43,8 +43,8 @@ function Group({ title, rows, empty }: { title: string; rows: Awaited<ReturnType
                     {r.assignee ? ` · ${r.assignee}` : ""} · {r.ref}
                   </span>
                 </span>
-                <span className="text-[12px] text-ink-4">{relTime(r.updatedAt)}</span>
-                <ArrowRight className="size-4 text-ink-4" />
+                <span className="text-[12px] text-ink-3">{relTime(r.updatedAt)}</span>
+                <ArrowRight className="size-4 text-ink-3" />
               </Link>
             </li>
           ))}

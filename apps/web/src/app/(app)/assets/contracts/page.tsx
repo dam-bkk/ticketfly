@@ -61,7 +61,7 @@ export default async function ContractsPage() {
                       <td className="px-3 py-2 capitalize text-ink-2">{c.type}</td>
                       <td className="tnum px-3 py-2 text-ink-2">
                         {c.startDate} → {c.endDate}
-                        <span className={cn("ml-2 text-[11.5px]", days < 0 ? "text-ink-4" : days < 90 ? "text-warn" : "text-ink-3")}>{days < 0 ? "ended" : `${days}d`}</span>
+                        <span className={cn("ml-2 text-[11.5px]", days < 0 ? "text-ink-3" : days < 90 ? "text-warn" : "text-ink-3")}>{days < 0 ? "ended" : `${days}d`}</span>
                       </td>
                       <td className="px-3 py-2">
                         <Tone tone={c.status === "active" ? "ok" : c.status === "expiring" ? "warn" : "neutral"} className="capitalize">

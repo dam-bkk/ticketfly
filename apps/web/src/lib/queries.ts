@@ -6,6 +6,38 @@ import { slaFor } from "./sla";
 
 export type InboxFilter = "open" | "mine" | "unassigned" | "at_risk" | "waiting" | "approval" | "resolved" | "all" | "legacy";
 
+/** The ONE definition of "open / unresolved" used by the sidebar badge, /tickets tabs, dashboard tiles and KPIs. */
+export const OPEN_STATUSES = ["open", "in_progress", "pending", "pending_approval", "on_hold"] as const;
+const openStatusList = sql.raw(OPEN_STATUSES.map((x) => `'${x}'`).join(","));
+
+export type OpenScope = { workspace?: string; groupId?: number; assigneeId?: number | "unassigned" };
+
+/** Count of unresolved tickets in a scope — same statuses and workspace filter everywhere. */
+export async function openCount(scope: OpenScope = {}) {
+  const t = schema.tickets;
+  const conds = [inArray(t.status, [...OPEN_STATUSES])];
+  if (scope.workspace) conds.push(eq(t.workspace, scope.workspace));
+  if (scope.groupId) conds.push(eq(t.groupId, scope.groupId));
+  if (scope.assigneeId === "unassigned") conds.push(isNull(t.assigneeId));
+  else if (typeof scope.assigneeId === "number") conds.push(eq(t.assigneeId, scope.assigneeId));
+  const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(t).where(and(...conds));
+  return r?.n ?? 0;
+}
+
+/** Task counts for the /tasks tabs and the sidebar badge — one definition of "my tasks". */
+export async function taskCounts(meId: number) {
+  const t = schema.tasks;
+  const [r] = await db
+    .select({
+      mine: sql<number>`count(*) filter (where ${t.assigneeId} = ${meId} and ${t.status} <> 'done')::int`,
+      all: sql<number>`count(*) filter (where ${t.status} <> 'done')::int`,
+      overdue: sql<number>`count(*) filter (where ${t.status} <> 'done' and ${t.dueAt} < now())::int`,
+      dueToday: sql<number>`count(*) filter (where ${t.assigneeId} = ${meId} and ${t.status} <> 'done' and ${t.dueAt}::date <= now()::date)::int`,
+    })
+    .from(t);
+  return r!;
+}
+
 export type AdvancedFilter = { group?: string; agent?: string; status?: string; requester?: string; department?: string; created?: string; due?: string; fr?: string; priority?: string; source?: string };
 
 export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: string; groupId?: number; limit?: number; workspace?: string; adv?: AdvancedFilter }) {
@@ -30,7 +62,7 @@ export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: s
   if (a.priority) conds.push(eq(t.priority, a.priority as never));
   if (a.source) conds.push(eq(t.source, a.source as never));
   const advActive = Object.values(a).some(Boolean);
-  const openStatuses = ["open", "in_progress", "pending", "pending_approval", "on_hold"] as const;
+  const openStatuses = OPEN_STATUSES;
   switch (advActive && !a.status ? "open" : advActive ? "all" : opts.filter) {
     case "open":
       conds.push(inArray(t.status, [...openStatuses]));
@@ -97,20 +129,19 @@ export async function listInbox(opts: { filter: InboxFilter; meId: number; q?: s
 
 export async function inboxCounts(meId: number, workspace?: string) {
   const t = schema.tickets;
-  const open = ["open", "in_progress", "pending", "on_hold"] as const;
   const [row] = await db
     .select({
-      open: sql<number>`count(*) filter (where ${t.status} in ('open','in_progress','pending','pending_approval','on_hold'))::int`,
+      open: sql<number>`count(*) filter (where ${t.status} in (${openStatusList}))::int`,
       approval: sql<number>`count(*) filter (where ${t.status} = 'pending_approval')::int`,
-      mine: sql<number>`count(*) filter (where ${t.assigneeId} = ${meId} and ${t.status} in ('open','in_progress','pending','on_hold'))::int`,
-      unassigned: sql<number>`count(*) filter (where ${t.assigneeId} is null and ${t.status} in ('open','in_progress','pending','on_hold'))::int`,
+      mine: sql<number>`count(*) filter (where ${t.assigneeId} = ${meId} and ${t.status} in (${openStatusList}))::int`,
+      unassigned: sql<number>`count(*) filter (where ${t.assigneeId} is null and ${t.status} in (${openStatusList}))::int`,
       waiting: sql<number>`count(*) filter (where ${t.status} in ('pending','on_hold'))::int`,
       atRisk: sql<number>`count(*) filter (where ${t.status} in ('open','in_progress') and (${t.resolutionDueAt} < now() + interval '24 hours' or (${t.firstRespondedAt} is null and ${t.firstResponseDueAt} < now() + interval '1 hour')))::int`,
+      breached: sql<number>`count(*) filter (where ${t.status} in ('open','in_progress') and ${t.resolutionDueAt} < now())::int`,
       legacy: sql<number>`count(*) filter (where ${t.legacyRef} is not null)::int`,
     })
     .from(t)
     .where(workspace ? eq(t.workspace, workspace) : undefined);
-  void open;
   return row!;
 }
 
@@ -166,14 +197,11 @@ export async function listCategories() {
   return db.select().from(schema.categories).orderBy(asc(schema.categories.name));
 }
 
-export async function dashboardStats() {
+export async function dashboardStats(workspace?: string) {
   const t = schema.tickets;
+  const ws = workspace ? eq(t.workspace, workspace) : undefined;
   const [k] = await db
     .select({
-      open: sql<number>`count(*) filter (where ${t.status} in ('open','in_progress','pending','on_hold'))::int`,
-      unassigned: sql<number>`count(*) filter (where ${t.assigneeId} is null and ${t.status} in ('open','in_progress'))::int`,
-      breached: sql<number>`count(*) filter (where ${t.status} in ('open','in_progress') and ${t.resolutionDueAt} < now())::int`,
-      atRisk: sql<number>`count(*) filter (where ${t.status} in ('open','in_progress') and ${t.resolutionDueAt} between now() and now() + interval '24 hours')::int`,
       resolved7: sql<number>`count(*) filter (where ${t.resolvedAt} > now() - interval '7 days')::int`,
       created7: sql<number>`count(*) filter (where ${t.createdAt} > now() - interval '7 days')::int`,
       medianFirstResponseMin: sql<number>`coalesce(percentile_cont(0.5) within group (order by extract(epoch from (${t.firstRespondedAt} - ${t.createdAt}))/60) filter (where ${t.firstRespondedAt} > now() - interval '30 days'), 0)::int`,
@@ -182,7 +210,8 @@ export async function dashboardStats() {
       slaMet: sql<number>`count(*) filter (where ${t.resolvedAt} is not null and ${t.resolvedAt} <= ${t.resolutionDueAt} and ${t.resolvedAt} > now() - interval '30 days')::int`,
       slaTotal: sql<number>`count(*) filter (where ${t.resolvedAt} is not null and ${t.resolvedAt} > now() - interval '30 days')::int`,
     })
-    .from(t);
+    .from(t)
+    .where(ws);
   const daily = await db.execute(sql`
     with days as (select generate_series((now() - interval '29 days')::date, now()::date, '1 day')::date d)
     select to_char(d, 'DD Mon') as label,

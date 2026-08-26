@@ -23,7 +23,7 @@ export function TaskList({ rows, parentType, parentId, back, compact }: { rows: 
               </form>
               <span className={cn("min-w-0 flex-1 truncate", done && "text-ink-3 line-through decoration-line-strong")}>{t.title}</span>
               {assignee && <Avatar name={assignee} size={18} />}
-              {t.dueAt && !compact && <span className={cn("tnum w-20 text-right text-[11.5px]", overdue ? "font-medium text-crit" : "text-ink-4")}>{done ? "done" : relTime(t.dueAt)}</span>}
+              {t.dueAt && !compact && <span className={cn("tnum w-20 text-right text-[11.5px]", overdue ? "font-medium text-crit" : "text-ink-3")}>{done ? "done" : relTime(t.dueAt)}</span>}
             </li>
           );
         })}
@@ -40,7 +40,7 @@ export function TaskList({ rows, parentType, parentId, back, compact }: { rows: 
         </button>
       </form>
       {!compact && (
-        <p className="mt-2 text-[11.5px] text-ink-4">
+        <p className="mt-2 text-[11.5px] text-ink-3">
           Also in <Link href="/tasks" className="underline-offset-2 hover:underline">Tasks</Link> for the assignee.
         </p>
       )}

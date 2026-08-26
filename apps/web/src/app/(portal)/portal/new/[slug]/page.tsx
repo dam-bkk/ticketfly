@@ -8,6 +8,7 @@ import { Field, Input, Select, Textarea, Toggle } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ServiceIcon } from "../../icons";
 import { PersonPicker } from "./person-picker";
+import { Deflection } from "./deflection";
 
 export default async function NewRequest({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ q?: string }> }) {
   const me = await requirePrincipal();
@@ -87,6 +88,7 @@ export default async function NewRequest({ params, searchParams }: { params: Pro
               );
           }
         })}
+        {service.fields.some((f) => f.type === "text" || f.type === "textarea") && <Deflection />}
         <div className="flex items-center justify-between pt-2">
           <p className="text-[12px] text-ink-3">
             Raised as <strong className="font-medium text-ink-2">{me.displayName}</strong> · you will get an email when it is picked up.

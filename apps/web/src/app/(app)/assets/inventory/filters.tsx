@@ -7,7 +7,7 @@ import type { InventoryFilter } from "@/lib/assets";
 import { Field, Input, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-/** Freshservice keeps filters in a right-hand pane; we keep the same place and the same field names. */
+/** Right-hand filter pane; field names match the inventory columns. */
 export function FilterPanel({ current, facets }: { current: InventoryFilter; facets: { locations: [string, number][]; departments: [string, number][]; types: [string, number][] } }) {
   const router = useRouter();
   const [f, setF] = useState<InventoryFilter>(current);
@@ -24,9 +24,6 @@ export function FilterPanel({ current, facets }: { current: InventoryFilter; fac
         <p className="text-[12.5px] font-medium">Filters</p>
       </div>
       <div className="space-y-3">
-        <Field label="Workspace" help="Change it with the switcher at the top">
-          <Input readOnly value={current.workspace ?? "it"} className="h-8 bg-surface-2 text-[12.5px] capitalize text-ink-2" />
-        </Field>
         <Field label="Asset Type">
           <Select value={f.type ?? ""} onChange={set("type")} className="h-8 text-[12.5px]">
             <option value="">All Assets</option>

@@ -44,7 +44,7 @@ export default async function ChangeCalendar({ searchParams }: { searchParams: P
               {days.map((d) => {
                 const items = changes.filter((c) => c.plannedStart && isSameDay(c.plannedStart, d));
                 return (
-                  <div key={d.toISOString()} className={cn("min-h-[96px] p-1.5 hairline-t hairline-r", !isSameMonth(d, month) && "bg-surface-2/50 text-ink-4", freeze(d) && isSameMonth(d, month) && "bg-warn-soft/40")}>
+                  <div key={d.toISOString()} className={cn("min-h-[96px] p-1.5 hairline-t hairline-r", !isSameMonth(d, month) && "bg-surface-2/50 text-ink-3", freeze(d) && isSameMonth(d, month) && "bg-warn-soft/40")}>
                     <p className={cn("tnum text-[11.5px]", isSameDay(d, new Date()) && "font-semibold text-accent-ink")}>{format(d, "d")}</p>
                     <ul className="mt-1 space-y-0.5">
                       {items.map((c) => (

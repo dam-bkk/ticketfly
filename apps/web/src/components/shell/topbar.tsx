@@ -18,7 +18,7 @@ export async function Topbar({ crumbs, actions, className, workspace = true }: {
       <nav className="flex min-w-0 items-center gap-1 text-[13px]">
         {crumbs.map((c, i) => (
           <span key={i} className="flex items-center gap-1">
-            {i > 0 && <ChevronRight className="size-3.5 text-ink-4" />}
+            {i > 0 && <ChevronRight className="size-3.5 text-ink-3" />}
             {c.href ? (
               <Link href={c.href} className="rounded text-ink-2 hover:text-ink">
                 {c.label}

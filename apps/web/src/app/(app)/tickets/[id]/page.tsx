@@ -17,7 +17,9 @@ import { workspaceContext } from "@/lib/workspace";
 import { Paperclip } from "lucide-react";
 import { Properties } from "./properties";
 import { SlaBlock } from "./sla-block";
-import { TaskList } from "@/components/ui/task-list";
+import { RecordTasks } from "./tasks";
+import { SavedAtProvider } from "./saved-at";
+import { TicketNextStep } from "./next-step";
 import { listTasksFor } from "@/lib/modules";
 import { db, schema } from "@ticketfly/db";
 import { eq } from "drizzle-orm";
@@ -74,6 +76,8 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
 
+          <TicketNextStep ticketId={t.id} status={t.status} assigneeId={t.assigneeId} meId={me.id} requesterFirst={requester?.displayName.split(" ")[0] ?? "the requester"} />
+
           <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-6">
             <ol className="relative space-y-5 before:absolute before:bottom-2 before:left-[15px] before:top-2 before:w-px before:bg-line">
               {/* Original description */}
@@ -97,7 +101,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
                       <span className="absolute inset-[5px] rounded-full bg-ink-4" />
                     </span>
                     <span className="text-[12.5px] text-ink-3">
-                      <span className="font-medium text-ink-2">{author ?? "Service Desk"}</span> {m.body} <span className="text-ink-4">· {relTime(m.createdAt)}</span>
+                      <span className="font-medium text-ink-2">{author ?? "Service Desk"}</span> {m.body} <span className="text-ink-3">· {relTime(m.createdAt)}</span>
                     </span>
                   </li>
                 ) : (
@@ -134,7 +138,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
                   {files.map((f) => (
                     <li key={f.id}>
                       <a href={`/api/attachments/${f.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-surface-2 px-2.5 py-1.5 text-[12.5px] hover:bg-surface-3">
-                        <Paperclip className="size-3.5 text-ink-3" /> {f.name} <span className="text-ink-4">{(f.size / 1024).toFixed(0)} KB</span>
+                        <Paperclip className="size-3.5 text-ink-3" /> {f.name} <span className="text-ink-3">{(f.size / 1024).toFixed(0)} KB</span>
                       </a>
                     </li>
                   ))}
@@ -146,9 +150,11 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
         </div>
 
         {/* Properties */}
-        <aside className="w-[320px] shrink-0 overflow-y-auto bg-surface hairline-l">
-          <Properties ticket={{ id: t.id, status: t.status, priority: t.priority, assigneeId: t.assigneeId, groupId: t.groupId, categoryId: t.categoryId }} agents={agents} groups={groups} categories={categories} department={requester?.department ?? null} />
-          <CustomFields ticketId={t.id} fields={customFields} values={t.custom} />
+        <aside className="w-[320px] min-w-0 shrink-0 overflow-y-auto bg-surface hairline-l">
+          <SavedAtProvider>
+            <Properties ticket={{ id: t.id, status: t.status, priority: t.priority, assigneeId: t.assigneeId, groupId: t.groupId, categoryId: t.categoryId }} agents={agents} groups={groups} categories={categories} department={requester?.department ?? null} />
+            <CustomFields ticketId={t.id} fields={customFields} values={t.custom} />
+          </SavedAtProvider>
           <SlaBlock first={sla.first} resolution={sla.resolution} status={t.status} />
           {problem && (
             <section className="px-5 py-4 hairline-t">
@@ -162,7 +168,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
           )}
           <section className="px-5 py-4 hairline-t">
             <p className="label mb-2">Tasks</p>
-            <TaskList rows={tasks} parentType="ticket" parentId={t.id} back={`/tickets/${t.id}`} compact />
+            <RecordTasks rows={tasks} parentType="ticket" parentId={t.id} back={`/tickets/${t.id}`} compact />
             {!problem && <Link href={`/problems/new?ticket=${t.id}`} className="mt-2 inline-block text-[12px] text-ink-3 hover:text-ink">Seen this before? Raise a problem →</Link>}
           </section>
 
@@ -208,7 +214,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
                     <Link href={`/tickets/${r.id}`} className="flex items-center gap-2 rounded-md px-1.5 py-1 text-[12.5px] hover:bg-surface-2">
                       <StatusDot status={r.status} />
                       <span className="min-w-0 flex-1 truncate text-ink-2">{r.subject}</span>
-                      <span className="text-[11px] text-ink-4">{relTime(r.createdAt)}</span>
+                      <span className="text-[11px] text-ink-3">{relTime(r.createdAt)}</span>
                     </Link>
                   </li>
                 ))}
@@ -237,13 +243,13 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
                   <li key={a.id} className="text-[12px] text-ink-3">
                     <span className="font-medium text-ink-2">{a.actorName}</span> <span className="font-mono text-[11px]">{a.action}</span>
                     {a.after && typeof a.after === "object" && "status" in (a.after as object) ? ` → ${STATUS_LABEL[(a.after as { status: string }).status] ?? ""}` : ""}
-                    <span className="text-ink-4"> · {relTime(a.ts)}</span>
+                    <span className="text-ink-3"> · {relTime(a.ts)}</span>
                   </li>
                 ))}
               </ul>
             )}
           </section>
-          <p className="px-5 pb-5 pt-2 text-[11px] text-ink-4">Viewing as {me.displayName}</p>
+          <p className="px-5 pb-5 pt-2 text-[11px] text-ink-3">Viewing as {me.displayName}</p>
         </aside>
       </div>
     </>

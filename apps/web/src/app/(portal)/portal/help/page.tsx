@@ -24,7 +24,7 @@ export default async function Help({ searchParams }: { searchParams: Promise<{ q
       <div className="mt-4 flex flex-wrap gap-2">
         <Link href="/portal/help" className={`rounded-full px-3 py-1 text-[12.5px] font-medium hairline ${!c ? "bg-accent-soft text-accent-ink" : "text-ink-2 hover:bg-surface-2"}`}>All</Link>
         {cats.map((x) => (
-          <Link key={x.category ?? "?"} href={`/portal/help?c=${encodeURIComponent(x.category ?? "")}`} className={`rounded-full px-3 py-1 text-[12.5px] font-medium hairline ${c === x.category ? "bg-accent-soft text-accent-ink" : "text-ink-2 hover:bg-surface-2"}`}>{x.category} <span className="text-ink-4">{x.n}</span></Link>
+          <Link key={x.category ?? "?"} href={`/portal/help?c=${encodeURIComponent(x.category ?? "")}`} className={`rounded-full px-3 py-1 text-[12.5px] font-medium hairline ${c === x.category ? "bg-accent-soft text-accent-ink" : "text-ink-2 hover:bg-surface-2"}`}>{x.category} <span className="text-ink-3">{x.n}</span></Link>
         ))}
       </div>
       <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -33,7 +33,7 @@ export default async function Help({ searchParams }: { searchParams: Promise<{ q
             <Link href={`/portal/help/${art.id}`} className="group flex h-full flex-col rounded-2xl bg-surface p-5 transition-all hairline hover:-translate-y-0.5 hover:shadow-2">
               <span className="eyebrow">{category} · {folder}</span>
               <span className="mt-2 flex items-start gap-2 text-[15px] font-semibold leading-snug tracking-[-0.01em]"><FileText className="mt-0.5 size-4 shrink-0 text-ink-3" />{art.title}</span>
-              <span className="mt-auto flex items-center justify-between pt-4 text-[12px] text-ink-3"><span>{art.views} views · updated {relTime(art.updatedAt)}</span><ArrowRight className="size-3.5 text-ink-4 group-hover:text-accent-ink" /></span>
+              <span className="mt-auto flex items-center justify-between pt-4 text-[12px] text-ink-3"><span>{art.views} views · updated {relTime(art.updatedAt)}</span><ArrowRight className="size-3.5 text-ink-3 group-hover:text-accent-ink" /></span>
             </Link>
           </li>
         ))}

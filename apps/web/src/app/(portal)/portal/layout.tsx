@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { requirePrincipal } from "@/lib/auth";
 import { Logo } from "@/components/ui/logo";
 import { Avatar } from "@/components/ui/avatar";
@@ -7,6 +8,9 @@ import { CommandPalette } from "@/components/shell/command-palette";
 import { PortalNav } from "./nav";
 import { viewAsContext } from "@/lib/view-as";
 import { ViewAsBar } from "@/components/shell/view-as";
+
+/** The portal is the "Ticketing" tile of the QI Hub launchpad — every page keeps a way back to it. */
+const LAUNCHPAD_URL = process.env.LAUNCHPAD_URL ?? "https://qihub.qigroup.com";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const me = await requirePrincipal();
@@ -21,6 +25,9 @@ export default async function PortalLayout({ children }: { children: React.React
           </Link>
           <PortalNav />
           <div className="ml-auto flex items-center gap-3">
+            <a href={LAUNCHPAD_URL} className="hidden items-center gap-1 text-[12.5px] font-medium text-ink-3 hover:text-ink sm:inline-flex" title="Back to the QI Hub launchpad">
+              QI Hub <ArrowUpRight className="size-3.5" />
+            </a>
             <CommandPalette portal />
             {staff && (
               <Link href="/tickets" className="text-[12.5px] font-medium text-ink-3 hover:text-ink">
@@ -36,7 +43,7 @@ export default async function PortalLayout({ children }: { children: React.React
         </div>
       </header>
       <main className="mx-auto max-w-[1080px] px-6 pb-24">{children}</main>
-      <footer className="mx-auto max-w-[1080px] px-6 pb-10 text-[12px] text-ink-4">
+      <footer className="mx-auto max-w-[1080px] px-6 pb-10 text-[12px] text-ink-3">
         IT QI Group · Service desk hours 09:00–18:00 HKT, Monday to Friday · Urgent security issues are handled 24 × 7
       </footer>
       {va && <ViewAsBar people={va.people} viewing={va.viewing} />}

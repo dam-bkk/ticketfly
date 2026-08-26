@@ -50,7 +50,7 @@ export default async function AutomationPage() {
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-[12px] text-ink-4">Adding a rule is a pull request: a function in <code>packages/core/automation.ts</code>, its test, and a row here. Every run and every toggle is in the activity log.</p>
+      <p className="mt-4 text-[12px] text-ink-3">Adding a rule is a pull request: a function in <code>packages/core/automation.ts</code>, its test, and a row here. Every run and every toggle is in the activity log.</p>
     </div>
   );
 }

@@ -161,6 +161,12 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); }
 .row:focus-within { box-shadow: inset 2px 0 0 var(--accent); }
 .row.hairline-b:focus-within { box-shadow: inset 2px 0 0 var(--accent), inset 0 -1px 0 var(--line); }
 
+/* Login persona rows: unlayered on purpose — .hairline and the global :focus-visible rule are unlayered,
+   so Tailwind's layered hover:/focus-visible: utilities cannot override them. */
+.persona-row { transition: background-color 120ms ease, box-shadow 120ms ease; }
+.persona-row:hover { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-strong), var(--shadow-2); }
+.persona-row:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+
 /* Progress bar */
 .bar { position: relative; height: 4px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
 .bar > i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--accent); }

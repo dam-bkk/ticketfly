@@ -7,7 +7,7 @@ import { cn, longTime, money, relTime } from "@/lib/utils";
 import { Topbar } from "@/components/shell/topbar";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusDot, Tone } from "@/components/ui/pills";
-import { EditPanel } from "./edit-panel";
+import { InlineField } from "./inline-field";
 import { SoftwareTable } from "./software-table";
 import { addRelationship, removeRelationship } from "@/app/extra-actions";
 import { Button } from "@/components/ui/button";
@@ -31,10 +31,11 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
   const tab: Tab = (TABS as readonly string[]).includes(rawTab ?? "") ? (rawTab as Tab) : "overview";
   const [data, pickers] = await Promise.all([getAssetFull(Number(id)), listPickers()]);
   if (!data) notFound();
-  const { a, owner, managedBy, managedByGroup, software, assignments, tickets, activity, contracts, pos, peers, relOut, relIn, allAssets } = data;
+  const { a, owner, software, assignments, tickets, activity, contracts, pos, peers, relOut, relIn, allAssets } = data;
   const title = a.hostname ?? a.name;
   const counts: Partial<Record<Tab, number>> = { software: software.length, components: 4, associations: tickets.length, contracts: contracts.length, "purchase-orders": pos.length, assignment: assignments.length, activity: activity.length, relationships: relOut.length + relIn.length };
   const monthly = software.reduce((s, x) => s + Number(x.cost), 0);
+  const departments = [...new Set(pickers.people.map((p) => p.department).filter((d): d is string => !!d))].sort();
 
   return (
     <>
@@ -45,12 +46,13 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
           <div className="shrink-0 px-5 pt-4">
             <div className="flex items-center gap-3 rounded-lg bg-accent-soft/60 px-4 py-2.5">
               <h1 className="text-[16px] font-semibold tracking-[-0.01em]">{title}</h1>
-              <span className="font-mono text-[11.5px] text-ink-3">{a.assetTag}</span>
+              <span className="font-mono text-[11px] text-ink-3">{a.assetTag}</span>
+              <Tone tone={a.status === "in_use" ? "ok" : a.status === "repair" ? "warn" : "neutral"}>{STATE_LABEL[a.status] ?? cap(a.status)}</Tone>
               <span className="ml-auto flex items-center gap-2">
                 {a.returnedAt && <Tone tone="warn">Returned by user · unassign</Tone>}
                 {owner && !a.acknowledgedAt && !a.returnedAt && <Tone tone="warn">Awaiting acknowledgement</Tone>}
                 {a.compliance === "non_compliant" && <Tone tone="crit">Non-compliant</Tone>}
-                {a.lastSeenAt && <span className="text-[12px] text-ink-3">Seen {relTime(a.lastSeenAt)} · {a.lastSeenCity}</span>}
+                {a.lastSeenAt && <span className="text-[12.5px] text-ink-3">Seen {relTime(a.lastSeenAt)} · {a.lastSeenCity}</span>}
               </span>
             </div>
           </div>
@@ -59,7 +61,7 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
             {/* Left tabs (Freshservice anatomy) */}
             <nav className="w-[200px] shrink-0 space-y-px px-5 py-4">
               {TABS.map((t) => (
-                <Link key={t} href={`/assets/${a.id}?tab=${t}`} className={cn("flex h-8 items-center rounded-md px-2.5 text-[13px] text-ink-2 hover:bg-surface-2 hover:text-ink", tab === t && "bg-accent-soft font-medium text-accent-ink hover:bg-accent-soft hover:text-accent-ink")}>
+                <Link key={t} href={`/assets/${a.id}?tab=${t}`} className={cn("flex h-8 items-center rounded-md px-2.5 text-[13.5px] text-ink-2 hover:bg-surface-2 hover:text-ink", tab === t && "bg-accent-soft font-medium text-accent-ink hover:bg-accent-soft hover:text-accent-ink")}>
                   <span className="flex-1">{TAB_LABEL[t]}</span>
                   {counts[t] ? <span className="tnum text-[11px] text-ink-3">{counts[t]}</span> : null}
                 </Link>
@@ -69,12 +71,48 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
             {/* Centre */}
             <div className="min-w-0 flex-1 overflow-y-auto px-6 py-4 hairline-l">
               {tab === "overview" && (
-                <div className="space-y-6">
+                <div className="max-w-[880px] space-y-6">
                   <Section title="General">
-                    <KV rows={[["Name", a.name], ["Asset Type", cap(a.type)], ["Asset Tag", a.assetTag], ["Impact", cap(a.impact)], ["Description", "—"], ["End of Life", a.endOfLife ?? "—"], ["Discovery Enabled", a.discoveryEnabled ? "Yes" : "No"], ["Created by - Source", a.source === "manual" ? "Agent" : "Discovery Agent"], ["Created At", longTime(a.createdAt)], ["Last updated by - Source", cap(a.source)], ["Updated At", longTime(a.updatedAt)], ["Sources", a.source === "manual" ? "User" : `Discovery Agent, ${cap(a.source)}, User`]]} />
+                    <KV
+                      rows={[
+                        ["Name", a.name],
+                        ["Asset Type", cap(a.type)],
+                        ["Asset Tag", a.assetTag],
+                        ["Impact", <InlineField key="impact" assetId={a.id} field="impact" value={a.impact} options={IMPACT_OPTIONS} />],
+                        ["Usage Type", <InlineField key="usageType" assetId={a.id} field="usageType" value={a.usageType} options={USAGE_OPTIONS} />],
+                        ["Location", <InlineField key="location" assetId={a.id} field="location" value={a.lastSeenCity ?? ""} options={[{ value: "", label: "—" }, ...LOCATIONS.map((c) => ({ value: c, label: c }))]} />],
+                        ["Department", <InlineField key="department" assetId={a.id} field="department" value={a.department ?? ""} options={[{ value: "", label: "—" }, ...departments.map((d) => ({ value: d, label: d }))]} />],
+                        ["Used By", <InlineField key="ownerId" assetId={a.id} field="ownerId" value={a.ownerId ? String(a.ownerId) : ""} options={[{ value: "", label: "Unassigned (stock)" }, ...pickers.people.map((p) => ({ value: String(p.id), label: p.displayName + (p.status === "left" || p.status === "offboarding" ? " (Deactivated)" : "") }))]} hint={owner && (owner.status === "left" || owner.status === "offboarding") ? "User is leaving — device should come back to stock." : undefined} />],
+                        ["Assigned On", a.assignedOn ? longTime(a.assignedOn) : "—"],
+                        ["Managed By Group", <InlineField key="managedByGroupId" assetId={a.id} field="managedByGroupId" value={a.managedByGroupId ? String(a.managedByGroupId) : ""} options={[{ value: "", label: "—" }, ...pickers.groups.map((g) => ({ value: String(g.id), label: g.name }))]} />],
+                        ["Managed By", <InlineField key="managedById" assetId={a.id} field="managedById" value={a.managedById ? String(a.managedById) : ""} options={[{ value: "", label: "—" }, ...pickers.people.map((p) => ({ value: String(p.id), label: p.displayName }))]} />],
+                        ["Description", "—"],
+                        ["End of Life", <InlineField key="endOfLife" assetId={a.id} field="endOfLife" kind="date" value={a.endOfLife ?? ""} />],
+                        ["Discovery Enabled", a.discoveryEnabled ? "Yes" : "No"],
+                        ["Created by - Source", a.source === "manual" ? "Agent" : "Discovery Agent"],
+                        ["Created At", longTime(a.createdAt)],
+                        ["Last updated by - Source", cap(a.source)],
+                        ["Updated At", longTime(a.updatedAt)],
+                        ["Sources", a.source === "manual" ? "User" : `Discovery Agent, ${cap(a.source)}, User`],
+                      ]}
+                    />
                   </Section>
                   <Section title="Hardware">
-                    <KV rows={[["Product", a.model ?? "—"], ["Vendor", a.vendor ?? "—"], ["Cost", a.cost ? money(a.cost) : "—"], ["Warranty", a.warrantyExpiry ? (new Date(a.warrantyExpiry) > new Date() ? "In warranty" : "Expired") : "—"], ["Acquisition Date", a.purchaseDate ?? "—"], ["Warranty Expiry Date", a.warrantyExpiry ?? "—"], ["Domain", a.domain ?? "—"], ["Asset State", cap(a.status.replace("_", " "))], ["Serial Number", a.serial ?? "—"], ["Last Audit Date", a.lastSeenAt ? longTime(a.lastSeenAt) : "—"], ["Region", a.lastSeenCountry ?? "—"]]} />
+                    <KV
+                      rows={[
+                        ["Product", a.model ?? "—"],
+                        ["Vendor", a.vendor ?? "—"],
+                        ["Cost", a.cost ? money(a.cost) : "—"],
+                        ["Warranty", a.warrantyExpiry ? (new Date(a.warrantyExpiry) > new Date() ? "In warranty" : "Expired") : "—"],
+                        ["Acquisition Date", a.purchaseDate ?? "—"],
+                        ["Warranty Expiry Date", a.warrantyExpiry ?? "—"],
+                        ["Domain", a.domain ?? "—"],
+                        ["Asset State", <InlineField key="status" assetId={a.id} field="status" value={a.status} options={STATE_OPTIONS} />],
+                        ["Serial Number", a.serial ?? "—"],
+                        ["Last Audit Date", a.lastSeenAt ? longTime(a.lastSeenAt) : "—"],
+                        ["Region", a.lastSeenCountry ?? "—"],
+                      ]}
+                    />
                   </Section>
                   {(a.type === "laptop" || a.type === "desktop" || a.type === "server") && (
                     <Section title="Computer">
@@ -94,24 +132,24 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
               {tab === "relationships" && (
                 <div className="space-y-4">
                   <div className="rounded-lg bg-surface hairline">
-                    <div className="px-4 py-2.5 text-[13px] font-semibold hairline-b">Relationships · {relOut.length + relIn.length}</div>
-                    {relOut.length + relIn.length === 0 ? <p className="px-4 py-6 text-[13px] text-ink-3">No relationships yet. Add one below — dependencies show on both assets.</p> : (
+                    <div className="px-4 py-2.5 text-[13.5px] font-semibold hairline-b">Relationships · {relOut.length + relIn.length}</div>
+                    {relOut.length + relIn.length === 0 ? <p className="px-4 py-6 text-[13.5px] text-ink-3">No relationships yet. Add one below — dependencies show on both assets.</p> : (
                       <ul className="divide-y divide-line">
                         {relOut.map(({ r, name, assetTag, type }) => (
-                          <li key={`o${r.id}`} className="flex items-center gap-3 px-4 py-2 text-[13px]">
+                          <li key={`o${r.id}`} className="flex items-center gap-3 px-4 py-2 text-[13.5px]">
                             <span className="w-28 capitalize text-ink-3">{r.type.replace("_", " ")}</span>
                             <Link href={`/assets/${r.toAssetId}`} className="font-medium text-accent-ink hover:underline">{name}</Link>
                             <span className="font-mono text-[11px] text-ink-3">{assetTag}</span>
-                            <span className="text-[11.5px] capitalize text-ink-4">{type}</span>
+                            <span className="text-[11px] capitalize text-ink-3">{type}</span>
                             <form action={removeRelationship.bind(null, r.id, a.id)} className="ml-auto"><button type="submit" aria-label="Remove" className="rounded p-1 text-ink-3 hover:bg-surface-2 hover:text-ink"><X className="size-3.5" /></button></form>
                           </li>
                         ))}
                         {relIn.map(({ r, name, assetTag, type }) => (
-                          <li key={`i${r.id}`} className="flex items-center gap-3 px-4 py-2 text-[13px]">
+                          <li key={`i${r.id}`} className="flex items-center gap-3 px-4 py-2 text-[13.5px]">
                             <span className="w-28 text-ink-3">{r.type === "depends_on" ? "used by" : r.type === "connected_to" ? "connected to" : "upstream of"}</span>
                             <Link href={`/assets/${r.fromAssetId}`} className="font-medium text-accent-ink hover:underline">{name}</Link>
                             <span className="font-mono text-[11px] text-ink-3">{assetTag}</span>
-                            <span className="text-[11.5px] capitalize text-ink-4">{type}</span>
+                            <span className="text-[11px] capitalize text-ink-3">{type}</span>
                             <form action={removeRelationship.bind(null, r.id, a.id)} className="ml-auto"><button type="submit" aria-label="Remove" className="rounded p-1 text-ink-3 hover:bg-surface-2 hover:text-ink"><X className="size-3.5" /></button></form>
                           </li>
                         ))}
@@ -119,7 +157,7 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
                     )}
                   </div>
                   <form action={addRelationship.bind(null, a.id)} className="flex items-center gap-2 rounded-lg bg-surface p-3 hairline">
-                    <span className="text-[13px]">{title}</span>
+                    <span className="text-[13.5px]">{title}</span>
                     <Select name="type" defaultValue="depends_on" className="h-8 w-40 text-[12.5px]"><option value="depends_on">depends on</option><option value="connected_to">connected to</option><option value="used_by">used by</option></Select>
                     <Select name="toAssetId" defaultValue="" className="h-8 flex-1 text-[12.5px]">
                       <option value="">Choose an asset…</option>
@@ -129,11 +167,11 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
                   </form>
                   {peers.length > 0 && (
                     <div className="rounded-lg bg-surface hairline">
-                      <div className="px-4 py-2.5 text-[13px] font-semibold hairline-b">Same person</div>
+                      <div className="px-4 py-2.5 text-[13.5px] font-semibold hairline-b">Same person</div>
                       <ul className="divide-y divide-line">
                         {peers.map((p) => (
                           <li key={p.id}>
-                            <Link href={`/assets/${p.id}`} className="row flex items-center gap-3 px-4 py-2 text-[13px]">
+                            <Link href={`/assets/${p.id}`} className="row flex items-center gap-3 px-4 py-2 text-[13.5px]">
                               {p.type === "mobile" ? <Smartphone className="size-4 text-ink-3" /> : <Laptop className="size-4 text-ink-3" />}
                               <span className="font-medium text-accent-ink">{p.name}</span>
                               <span className="text-ink-3">{p.model}</span>
@@ -149,7 +187,7 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
 
               {tab === "components" && (
                 <div className="rounded-lg bg-surface hairline">
-                  <table className="w-full text-[13px]">
+                  <table className="w-full text-[13.5px]">
                     <thead><tr className="text-left [&>th]:h-9 [&>th]:px-4"><th className="label">Component</th><th className="label">Detail</th><th className="label">Source</th></tr></thead>
                     <tbody>
                       {[["Processor", `${a.cpuCores ?? "—"} cores @ ${a.cpuGhz ?? "—"} GHz`], ["Memory", `${a.memoryGb ?? "—"} GB`], ["Storage", `${a.diskGb ?? "—"} GB`], ["Network adapter", a.macAddress ?? "—"]].map(([k, v]) => (
@@ -163,19 +201,19 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
               {tab === "associations" && (
                 <div>
                   <div className="mb-3 flex items-center justify-between">
-                    <p className="text-[13px] text-ink-3">Tickets, changes and projects linked to this asset. Today: tickets raised by the person using it.</p>
+                    <p className="text-[13.5px] text-ink-3">Tickets, changes and projects linked to this asset. Today: tickets raised by the person using it.</p>
                     <Link href="/portal/new/report-issue" className="text-[12.5px] font-medium text-accent-ink hover:underline">+ Associate</Link>
                   </div>
                   {tickets.length === 0 ? <EmptyTab text="There are no associations" /> : (
                     <ul className="divide-y divide-line rounded-lg bg-surface hairline">
                       {tickets.map((t) => (
                         <li key={t.id}>
-                          <Link href={`/tickets/${t.id}`} className="row flex items-center gap-3 px-4 py-2.5 text-[13px]">
+                          <Link href={`/tickets/${t.id}`} className="row flex items-center gap-3 px-4 py-2.5 text-[13.5px]">
                             <StatusDot status={t.status} />
-                            <span className="w-24 font-mono text-[11.5px] text-ink-3">{t.ref}</span>
+                            <span className="w-24 font-mono text-[11px] text-ink-3">{t.ref}</span>
                             <span className="min-w-0 flex-1 truncate font-medium">{t.subject}</span>
                             <span className="capitalize text-ink-3">{t.kind}</span>
-                            <span className="text-[12px] text-ink-4">{relTime(t.createdAt)}</span>
+                            <span className="text-[12.5px] text-ink-3">{relTime(t.createdAt)}</span>
                           </Link>
                         </li>
                       ))}
@@ -187,8 +225,8 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
               {tab === "purchase-orders" && (pos.length === 0 ? <EmptyTab text="No purchase orders linked. Link one from Assets → Purchase Orders." /> : (
                 <ul className="divide-y divide-line rounded-lg bg-surface hairline">
                   {pos.map((p) => (
-                    <li key={p.id} className="flex items-center gap-3 px-4 py-2.5 text-[13px]">
-                      <span className="font-mono text-[12px] font-medium text-accent-ink">{p.number}</span>
+                    <li key={p.id} className="flex items-center gap-3 px-4 py-2.5 text-[13.5px]">
+                      <span className="font-mono text-[12.5px] font-medium text-accent-ink">{p.number}</span>
                       <span className="flex-1 text-ink-2">{p.vendor} · {p.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}</span>
                       <Tone tone={p.status === "received" ? "ok" : p.status === "ordered" ? "info" : "warn"} className="capitalize">{p.status.replace("_", " ")}</Tone>
                       <span className="tnum w-24 text-right">{money(p.total)}</span>
@@ -200,7 +238,7 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
               {tab === "contracts" && (contracts.length === 0 ? <EmptyTab text="No contracts cover this asset's vendor." /> : (
                 <ul className="divide-y divide-line rounded-lg bg-surface hairline">
                   {contracts.map((c) => (
-                    <li key={c.id} className="flex items-center gap-3 px-4 py-2.5 text-[13px]">
+                    <li key={c.id} className="flex items-center gap-3 px-4 py-2.5 text-[13.5px]">
                       <span className="flex-1 font-medium">{c.name}</span>
                       <span className="text-ink-3">{c.startDate} → {c.endDate}</span>
                       <Tone tone={c.status === "active" ? "ok" : c.status === "expiring" ? "warn" : "neutral"} className="capitalize">{c.status}</Tone>
@@ -215,8 +253,8 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
                   {[["Purchase", a.cost ? money(a.cost) : "—", a.purchaseDate ?? ""], ["Software / month", money(monthly), `${software.length} titles`], ["Depreciation (3y straight-line)", a.cost ? money(Number(a.cost) / 36) + " / mo" : "—", "book value shown in Reporting"]].map(([k, v, s]) => (
                     <div key={k} className="panel p-4">
                       <p className="label">{k}</p>
-                      <p className="tnum mt-2 text-[20px] font-semibold tracking-[-0.02em]">{v}</p>
-                      <p className="mt-1 text-[11.5px] text-ink-3">{s}</p>
+                      <p className="tnum mt-2 text-[22px] font-semibold tracking-[-0.02em]">{v}</p>
+                      <p className="mt-1 text-[11px] text-ink-3">{s}</p>
                     </div>
                   ))}
                 </div>
@@ -224,10 +262,10 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
 
               {tab === "assignment" && (
                 <div>
-                  <p className="mb-3 text-[13px] text-ink-3">Who has had this device, when they confirmed receipt, and when it came back. The requester sees the same record in the portal.</p>
+                  <p className="mb-3 text-[13.5px] text-ink-3">Who has had this device, when they confirmed receipt, and when it came back. The requester sees the same record in the portal.</p>
                   <ul className="divide-y divide-line rounded-lg bg-surface hairline">
                     {assignments.map(({ x, person }) => (
-                      <li key={x.id} className="flex items-center gap-3 px-4 py-2.5 text-[13px]">
+                      <li key={x.id} className="flex items-center gap-3 px-4 py-2.5 text-[13.5px]">
                         <Avatar name={person ?? "?"} size={24} />
                         <span className="w-44 truncate font-medium">{person ?? "Stock"}</span>
                         <span className="text-ink-3">Assigned {longTime(x.assignedAt)}</span>
@@ -244,13 +282,13 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
               {tab === "activity" && (activity.length === 0 ? <EmptyTab text="No changes recorded on this asset yet." /> : (
                 <ul className="space-y-2">
                   {activity.map((e) => (
-                    <li key={e.id} className="flex items-start gap-3 rounded-lg bg-surface px-4 py-2.5 text-[13px] hairline">
+                    <li key={e.id} className="flex items-start gap-3 rounded-lg bg-surface px-4 py-2.5 text-[13.5px] hairline">
                       <Avatar name={e.actorName} size={22} />
                       <span className="min-w-0 flex-1">
-                        <span className="font-medium">{e.actorName}</span> <span className="font-mono text-[11.5px] text-ink-3">{e.action}</span>
+                        <span className="font-medium">{e.actorName}</span> <span className="font-mono text-[11px] text-ink-3">{e.action}</span>
                         {e.after ? <span className="ml-2 font-mono text-[11px] text-ok">{JSON.stringify(e.after)}</span> : null}
                       </span>
-                      <span className="text-[12px] text-ink-4">{relTime(e.ts)}</span>
+                      <span className="text-[12.5px] text-ink-3">{relTime(e.ts)}</span>
                     </li>
                   ))}
                 </ul>
@@ -259,17 +297,16 @@ export default async function AssetPage({ params, searchParams }: { params: Prom
           </div>
         </div>
 
-        {/* Right: Edit properties (FS anatomy, functional) */}
-        <aside className="w-[300px] shrink-0 overflow-y-auto bg-surface hairline-l">
-          <div className="px-4 py-3 hairline-b">
-            <KVSmall rows={[["Workspace", "IT Division"], ["Product", a.model ?? "—"], ["Asset State", cap(a.status.replace("_", " "))], ["Serial Number", a.serial ?? "—"]]} />
-          </div>
-          <EditPanel asset={{ id: a.id, impact: a.impact, status: a.status, usageType: a.usageType, location: a.lastSeenCity, department: a.department, ownerId: a.ownerId, managedById: a.managedById, managedByGroupId: a.managedByGroupId, assignedOn: a.assignedOn?.toISOString() ?? null, endOfLife: a.endOfLife }} owner={owner ? { displayName: owner.displayName, status: owner.status } : null} managedBy={managedBy?.displayName ?? null} group={managedByGroup?.name ?? null} people={pickers.people} groups={pickers.groups} />
-        </aside>
       </div>
     </>
   );
 }
+
+const STATE_LABEL: Record<string, string> = { in_use: "In Use", in_stock: "In Stock", repair: "In Repair", retired: "Retired" };
+const STATE_OPTIONS = Object.entries(STATE_LABEL).map(([value, label]) => ({ value, label }));
+const IMPACT_OPTIONS = [{ value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" }];
+const USAGE_OPTIONS = [{ value: "permanent", label: "Permanent" }, { value: "loaner", label: "Loaner" }, { value: "shared", label: "Shared" }];
+const LOCATIONS = ["Hong Kong", "Kuala Lumpur", "Singapore", "Dubai", "Bangkok", "Manila", "London", "Paris"];
 
 function cap(s: string) {
   return s ? s[0]!.toUpperCase() + s.slice(1) : s;
@@ -277,35 +314,23 @@ function cap(s: string) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-2 text-[14px] font-semibold">{title}</h2>
+      <h2 className="mb-2 text-[13.5px] font-semibold">{title}</h2>
       <div className="rounded-lg bg-surface px-4 py-2 hairline">{children}</div>
     </section>
   );
 }
-function KV({ rows }: { rows: [string, string][] }) {
+function KV({ rows }: { rows: [string, React.ReactNode][] }) {
   return (
-    <dl className="grid grid-cols-[220px_1fr] gap-y-1 text-[13px]">
+    <dl className="grid grid-cols-[220px_1fr] gap-y-0.5 text-[13.5px]">
       {rows.map(([k, v]) => (
         <div key={k} className="contents">
-          <dt className="py-1 text-ink-3">{k}</dt>
-          <dd className="py-1 font-medium">{v}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-function KVSmall({ rows }: { rows: [string, string][] }) {
-  return (
-    <dl className="grid grid-cols-[96px_1fr] gap-y-1 text-[12.5px]">
-      {rows.map(([k, v]) => (
-        <div key={k} className="contents">
-          <dt className="truncate text-ink-3">{k}</dt>
-          <dd className="truncate font-medium">{v}</dd>
+          <dt className="flex h-8 items-center text-ink-3">{k}</dt>
+          <dd className="flex min-w-0 items-center font-medium">{v}</dd>
         </div>
       ))}
     </dl>
   );
 }
 function EmptyTab({ text }: { text: string }) {
-  return <p className="rounded-lg bg-surface px-4 py-10 text-center text-[13px] text-ink-3 hairline">{text}</p>;
+  return <p className="rounded-lg bg-surface px-4 py-10 text-center text-[13.5px] text-ink-3 hairline">{text}</p>;
 }

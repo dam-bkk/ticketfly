@@ -30,7 +30,8 @@ export function StatusPill({ status, className }: { status: string; className?: 
 
 /**
  * Priority glyph with an accessible name.
- * `withLabel`: `true` always shows the text label; `"wide"` shows it only at ≥1440px (list rows).
+ * `withLabel`: `true` always shows the text label; `"wide"` shows it only at ≥1600px (list rows, once the filter pane leaves room).
+ * The label is ink-2 for AA contrast; only the glyph carries the priority hue.
  */
 export function PriorityMark({ priority, withLabel, className }: { priority: string; withLabel?: boolean | "wide"; className?: string }) {
   const map: Record<string, { icon: React.ReactNode; color: string }> = {
@@ -44,7 +45,7 @@ export function PriorityMark({ priority, withLabel, className }: { priority: str
   return (
     <span className={cn("inline-flex items-center gap-1", m.color, className)} title={`${label} priority`}>
       <span aria-hidden>{m.icon}</span>
-      {withLabel ? <span aria-hidden className={cn("text-[12.5px] font-medium", withLabel === "wide" && "hidden min-[1440px]:inline")}>{label}</span> : null}
+      {withLabel ? <span aria-hidden className={cn("text-[12.5px] font-medium text-ink-2", withLabel === "wide" && "hidden min-[1600px]:inline")}>{label}</span> : null}
       <span className="sr-only">{label} priority</span>
     </span>
   );

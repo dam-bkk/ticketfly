@@ -69,7 +69,7 @@ export default async function MyDevices() {
           );
         })}
       </ul>
-      <p className="mt-8 text-[12px] text-ink-4">Device list comes from Intune automatically. Acknowledgements and returns are written to the asset's assignment history, which IT sees on the same record.</p>
+      <p className="mt-8 text-[12px] text-ink-3">Device list comes from Intune automatically. Acknowledgements and returns are written to the asset's assignment history, which IT sees on the same record.</p>
     </div>
   );
 }

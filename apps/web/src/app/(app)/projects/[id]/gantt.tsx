@@ -47,7 +47,7 @@ export function Gantt({ rows, start, end }: { rows: GridRow[]; start: string | n
           </div>
         </div>
       </div>
-      <p className="mt-2 text-[11.5px] text-ink-4">Red line = today. Lighter fill inside a bar = % done.</p>
+      <p className="mt-2 text-[11.5px] text-ink-3">Red line = today. Lighter fill inside a bar = % done.</p>
     </div>
   );
 }

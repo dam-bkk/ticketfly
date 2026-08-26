@@ -90,7 +90,7 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
                   <td className="tnum px-4 py-2.5 text-ink-2">{c.plannedStart ? format(c.plannedStart, "EEE d MMM, HH:mm") : "—"}</td>
                   <td className="px-4 py-2.5">{assignee ? <span className="flex items-center gap-2"><Avatar name={assignee} size={20} />{assignee}</span> : "—"}</td>
                   <td className="px-4 py-2.5">
-                    {c.approvals.length === 0 ? <span className="text-ink-4">{c.type === "standard" ? "Pre-approved" : "—"}</span> : (
+                    {c.approvals.length === 0 ? <span className="text-ink-3">{c.type === "standard" ? "Pre-approved" : "—"}</span> : (
                       <span className="flex items-center gap-1">
                         {c.approvals.map((a) => (
                           <span key={a.personId} title={`${a.name}: ${a.decision}`} className={cn("size-2 rounded-full", a.decision === "approved" ? "bg-ok" : a.decision === "rejected" ? "bg-crit" : "bg-warn")} />

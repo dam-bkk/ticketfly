@@ -41,7 +41,7 @@ export default async function RolesPage() {
                 <td className="px-4 py-2.5 text-ink-2">{cap}</td>
                 {cells.map((c, i) => (
                   <td key={i} className="px-4 py-2.5 text-center">
-                    {c === 1 ? <Check className="mx-auto size-4 text-ok" strokeWidth={2.5} /> : c === 2 ? <span className="text-[11px] text-ink-3">own scope</span> : <Minus className="mx-auto size-3.5 text-ink-4" />}
+                    {c === 1 ? <Check className="mx-auto size-4 text-ok" strokeWidth={2.5} /> : c === 2 ? <span className="text-[11px] text-ink-3">own scope</span> : <Minus className="mx-auto size-3.5 text-ink-3" />}
                   </td>
                 ))}
               </tr>
