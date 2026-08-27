@@ -167,8 +167,11 @@ INJECT = r'''(function(){
   if(t){
     document.title=t.ref+' · '+t.subject;
     if(!isPortal&&ol){
-      setText(document.querySelector('main span.font-mono, .font-mono'),t.ref);
-      setText(document.querySelector('h1'),t.subject);
+      var h1e=document.querySelector('h1');if(h1e){setText(h1e.parentElement.querySelector('span.font-mono'),t.ref);setText(h1e,t.subject);
+        var chips=h1e.parentElement.querySelectorAll('.text-crit, .text-warn');chips.forEach(function(c){c.className='inline-flex items-center gap-1 text-ink-3 rounded-md bg-surface-2 px-2 py-1';c.title='Medium priority';c.innerHTML='<span aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide size-3.5"><path d="M5 12h14"></path></svg></span><span aria-hidden="true" class="text-[12.5px] font-medium text-ink-2">Medium</span><span class="sr-only">Medium priority</span>'})}
+      document.querySelectorAll('.text-crit').forEach(function(x){var tx=x.textContent.trim();if(/over$|^Breached$/.test(tx)){x.classList.remove('text-crit','bg-crit-soft');x.classList.add('text-ok','bg-ok-soft');x.textContent='On track'}});
+      document.querySelectorAll('.bg-crit').forEach(function(x){if(!x.closest('nav,aside')){x.classList.remove('bg-crit');x.classList.add('bg-ok')}});
+      document.querySelectorAll('select').forEach(function(sel){if(/priority/i.test(sel.name||sel.getAttribute('aria-label')||'')||Array.from(sel.options).some(function(o){return o.value==='urgent'})){if(Array.from(sel.options).some(function(o){return o.value==='medium'}))sel.value='medium'}});
       document.querySelectorAll('span').forEach(function(s){if(/^Opened\s/.test(s.textContent))s.textContent='Opened '+nowLabel(t.createdAt)});
       var tpl=ol.querySelector('li');ol.innerHTML='';ol.appendChild(agentMsg(t.requester,'Requester · test entry',t.createdAt,t.body,tpl));
       var dep=document.querySelector('input[readonly], input[disabled]');if(dep&&/Department|Automation|Compliance/.test(dep.value))dep.value='Offline test';
