@@ -15,7 +15,10 @@ for src, a in (st.get("assets") or {}).items():
     if a and a.get("b"):
         assets[src] = f"data:{a['t'].split(';')[0]};base64,{a['b']}"
 
-# ---- pages
+# ---- pages (repeated SVG icons and sidebars go into dictionaries; gzip's 32 KB window cannot dedupe them across pages)
+SVG_RE = re.compile(r"<svg[^>]*>.*?</svg>", re.S)
+ASIDE_RE = re.compile(r"<aside[^>]*>.*?</aside>", re.S)
+svg_dict, aside_dict = {}, {}
 pages, alias = {}, {}
 for path, p in st["pages"].items():
     if not p.get("html") or p.get("status", 0) >= 400:
@@ -23,8 +26,11 @@ for path, p in st["pages"].items():
     h = p["html"]
     h = re.sub(r'<link[^>]+rel="stylesheet"[^>]*>', "", h)
     h = re.sub(r'<link[^>]+href="/_next/[^"]*"[^>]*>', "", h)
-    for src, uri in assets.items():
-        h = h.replace(H.escape(src, quote=True), uri).replace(src, uri)
+    h = re.sub(r'<link[^>]+rel="icon"[^>]*>', "", h)          # the shell carries the favicon; never per page
+    for src, uri in assets.items():                            # real images only
+        h = re.sub(r'(<img[^>]+src=")' + re.escape(H.escape(src, quote=True)) + '"', r'\1' + uri.replace("\\", "\\\\") + '"', h)
+    h = SVG_RE.sub(lambda m: "\u2983" + str(svg_dict.setdefault(m.group(0), len(svg_dict))) + "\u2984", h)
+    h = ASIDE_RE.sub(lambda m: "\u2985" + str(aside_dict.setdefault(m.group(0), len(aside_dict))) + "\u2986", h)
     pages[path] = [h, p.get("title") or "Service Desk"]
     if p.get("at") and p["at"] != path:
         alias[path] = p["at"]
@@ -56,7 +62,7 @@ nums = [int(n) for h, _ in pages.values() for n in re.findall(r"(?:INC|SR)-(\d{6
 seq = (max(nums) if nums else 229190) + 1
 print(f"templates: ticket={tpl_ticket} portal={tpl_portal} next#={seq}")
 
-payload = json.dumps({"pages": pages, "alias": alias, "css": css, "tpl": {"ticket": tpl_ticket, "portal": tpl_portal}, "seq": seq}, ensure_ascii=False).encode("utf-8")
+payload = json.dumps({"pages": pages, "alias": alias, "css": css, "svg": [k for k, _ in sorted(svg_dict.items(), key=lambda x: x[1])], "aside": [k for k, _ in sorted(aside_dict.items(), key=lambda x: x[1])], "tpl": {"ticket": tpl_ticket, "portal": tpl_portal}, "seq": seq}, ensure_ascii=False).encode("utf-8")
 blob = base64.b64encode(gzip.compress(payload, 9)).decode()
 favicon = assets.get(next((k for k in assets if k.startswith("/icon.svg")), ""), "")
 
@@ -281,7 +287,8 @@ iframe{{border:0;width:100%;height:100%;display:block;background:#f4f5f9}}
     if(!k){{say('That page is not included in this offline copy.');return false}}
     pendingCfg=Object.assign({{path:p,seq:D.seq}},CFG);
     var pg=D.pages[k];
-    fr.srcdoc=pg[0].replace('<head>','<head><style>'+D.css+'</style>'); document.title=pg[1]||'Service Desk'; return true;
+    var html=pg[0].replace(/\u2985(\\d+)\u2986/g,function(m,i){{return D.aside[+i]}}).replace(/\u2983(\\d+)\u2984/g,function(m,i){{return D.svg[+i]}});
+    fr.srcdoc=html.replace('<head>','<head><style>'+D.css+'</style>'); document.title=pg[1]||'Service Desk'; return true;
   }}
   function go(p,replace){{
     var h='#'+p; if(location.hash===h){{render(p);return}}
